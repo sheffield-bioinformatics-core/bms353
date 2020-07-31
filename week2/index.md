@@ -12,4 +12,15 @@ editor_options:
 
 <img src="../images/logo-sm.png" style="position:absolute;top:40px;right:10px;" width="200" />
 
-# About 
+# Learning objectives
+
+- How to download data from a public repository into R
+- Representation of high-throughput data in R
+- Quality assessment methods in R
+
+
+# Materials
+
+- [Notes](practical.nb.html)
+
+# Pre-materials

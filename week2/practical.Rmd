@@ -1,0 +1,351 @@
+---
+title: "BMs353 Bioinformatics for Biomedical Science - Week 2"
+author: "Module Coordinator Mark Dunning"
+output: 
+  html_notebook: 
+    toc: yes
+    toc_float: yes
+    css: ../stylesheets/styles.css
+editor_options: 
+  chunk_output_type: inline
+---
+
+<img src="../images/logo-sm.png" style="position:absolute;top:40px;right:10px;" width="200" />
+
+
+# Introduction
+
+In this tutorial we will get our first look at how to analyse high-throughput biological data in R. The majority of the course will discuss RNA-seq data for gene expression, but in this session we will consider data from an older technology; *microarrays*.
+
+Although considered outdated by many, the prevalence of microarrays in public repositories make them a valuable resource.
+
+You will need to have installed the following packages before starting:-
+
+```{r eval=FALSE}
+install.packages("BiocManager")
+BiocManager::install("GEOquery")
+BiocManager::install("limma")
+```
+
+
+# Importing the data
+
+The data from this experiment comprises nine paired tumor/normal colon tissues on Illumina HT12\_v3 gene expression Beadchips. We will assume that you already know the accession number (GSE....) for the dataset that you want to download.
+
+
+```{r echo=FALSE,message=FALSE}
+library(GEOquery)
+library(limma)
+```
+
+The function to download a GEO dataset is `getGEO` from the `GEOquery` package. You have to specify the ID of the dataset that you want. To download your own data, replace `GSE33126` with the ID that you're interested in.
+
+```{r cache=TRUE, message=FALSE}
+library(GEOquery)
+## change my_id to be the dataset that you want.
+my_id <- "GSE33126"
+gse <- getGEO(my_id)
+```
+
+Some datasets on GEO may be derived from different microarray platforms. Therefore the object `gse` is a list of different datasets. You can find out how many were used by checking the length of the `gse` object. Usually there will only be one platform and the dataset we want to analyse will be the first object in the list (`gse[[1]]`).
+
+```{r}
+## check how many platforms used
+length(gse)
+gse <- gse[[1]]
+gse
+
+## if more than one dataset is present, you can analyse the other dataset by changing the number inside the [[...]]
+## e.g. gse <- gse[[2]]
+```
+
+```{r eval=FALSE}
+pData(gse) ## print the sample information
+fData(gse) ## print the gene annotation
+exprs(gse) ## print the expression data
+```
+
+
+# Check the normalisation and scales used
+
+For visualisation and statistical analysis, we will inspect the data to discover what *scale* the data are presented in. The methods we will use assume the data are on a log$_2$ scale; typically in the range of 0 to 16. 
+
+The `exprs` function can retrieve the expression values as a data frame; with one column per-sample and one row per-gene.
+
+The `summary` function can then be used to print the distributions.
+
+```{r}
+## exprs get the expression levels as a data frame and get the distribution
+summary(exprs(gse))
+```
+
+From this output we clearly see that the values go beyond 16, so we will need to perform a $log_2$ transformation. A `boxplot` can also be generated to see if the data have been normalised. If so, the distributions of each sample should be highly similar.
+
+```{r}
+exprs(gse) <- log2(exprs(gse))
+boxplot(exprs(gse),outline=FALSE)
+```
+
+# Inspect the clinical variables
+
+Data submitted to GEO contain sample labels assigned by the experimenters, and some information about the processing protocol. All these data can be extracted by the `pData` function. 
+
+**For your own data, you will have to decide which columns will be useful in the analysis**. This will include the column giving the main comparison(s) of interest and any potential confounding factors. In this particular dataset it looks like `source_name_ch1` and `characteristics_ch1.1`.
+
+We can use the `select` function from `dplyr` to display just these columns of interest. At this stage it will also be useful to rename the columns to something more convenient using the `rename` function.
+
+```{r}
+library(dplyr)
+sampleInfo <- pData(gse)
+sampleInfo
+
+## source_name_ch1 and characteristics_ch1.1 seem to contain factors we might need for the analysis. Let's pick just those columns
+
+sampleInfo <- select(sampleInfo, source_name_ch1,characteristics_ch1.1)
+
+## Optionally, rename to more convenient column names
+sampleInfo <- rename(sampleInfo,group = source_name_ch1, patient=characteristics_ch1.1)
+```
+
+Our sample information is therefore:-
+
+```{r}
+sampleInfo
+```
+
+# Sample clustering and Principal Components Analysis
+
+Unsupervised analysis is a good way to get an understanding of the sources of variation in the data. It can also identify potential outlier samples.
+
+The function `cor` can calculate the correlation (on scale 0 - 1) in a pairwise fashion between all samples. This can be then visualised on a heatmap. Among the many options for creating heatmaps in R, the `pheatmap` library is one of the more popular ones. The only argument it requires is a matrix of numerical values (such as the correlation matrix).
+
+```{r}
+library(pheatmap)
+## argument use="c" stops an error if there are any missing data points
+
+corMatrix <- cor(exprs(gse),use="c")
+pheatmap(corMatrix)                
+```
+
+We can incorporate sample information onto the plot to try and understand the clustering. We have already created such a data frame previously (`sampleInfo`). However, we need to take care that the rownames of these data match the columns of the correlation matrix.
+
+```{r}
+## Print the rownames of the sample information and check it matches the correlation matrix
+rownames(sampleInfo)
+colnames(corMatrix)
+
+## If not, force the rownames to match the columns
+
+rownames(sampleInfo) <- colnames(corMatrix)
+pheatmap(corMatrix,
+         annotation_col=sampleInfo)    
+```
+
+Here we see that the main separation is due to normal vs tumours; as we hope.
+
+A complementary approach is to use Principal Components Analysis (PCA). There is a nice explanation in this youtube video.
+
+https://www.youtube.com/watch?v=0Jp4gsfOLMs
+
+It is important to *transpose* the expression matrix, otherwise R will try and compute PCA on the genes (instead of samples) and quickly run out of memory.
+
+As PCA is an unsupervised method, the known sample groups are not taken into account. However, we can add labels when we plot the results. The `ggplot2` package is particularly convenient for this. The `ggrepel` package can be used to postion the text labels more cleverly so they can be read.
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+## MAKE SURE TO TRANSPOSE THE EXPRESSION MATRIX
+
+pca <- prcomp(t(exprs(gse)))
+
+## Join the PCs to the sample information
+cbind(sampleInfo, pca$x) %>% 
+ggplot(aes(x = PC1, y=PC2, col=group,label=paste("Patient", patient))) + geom_point() + geom_text_repel()
+```
+
+## What happens if we spot a batch effect?
+
+Nothing at this stage. Provided the experimental design is sensible (i.e. representatives from all samples groups are present in each batch) we can correct for batch when we run the differential expression analysis.
+
+## What happens if we detect outliers?
+
+If we suspect some samples are outliers we can remove them for further analysis
+
+```{r eval=FALSE}
+### CODE ONLY FOR DEMONSTRATION ONLY
+
+### lets' say are outliers are samples 1,2 and 3
+## replace 1,2,3 with the outliers in your dataset
+outlier_samples <- c(1,2,3)
+
+gse <- gse[,-outlier_samples]
+
+```
+
+# Exporting the data
+
+We can export the expression data to a `csv` for inspection in Excel using the `write_csv` function from `readr`. The expression values themselves will probably not be very useful as they will be named according to manufacturer ID rather than gene name (for example). We can create a matrix by joining the expression matrix with the feature annotation.
+
+```{r}
+library(readr)
+full_output <- cbind(fData(gse),exprs(gse))
+write_csv(full_output, path="gse_full_output.csv")
+```
+
+The annotation from GEO might contain lots of columns that we are not particularly interested in. To keep the data tidier we can use the `select` function to only print particular columns in the output.
+
+```{r}
+features <- fData(gse)
+View(features)
+### Look at the features data frame and decide the names of the columns you want to keep
+features <- select(features,Symbol,Entrez_Gene_ID,Chromosome,Cytoband)
+full_output <- cbind(features,exprs(gse))
+write_csv(full_output, path="gse_full_output.csv")
+
+```
+
+
+# Differential Expression
+
+By far the most-popular package for performing differential expression is `limma`. The user-guide is extensive and covers the theory behind the analysis and many use-cases (Chapters 9 and 17 for single-channel data such as Illumina and Affymetrix)
+
+https://bioconductor.org/packages/release/bioc/vignettes/limma/inst/doc/usersguide.pdf
+
+Crucially, we have to allocate the samples in our dataset to the sample groups of interest. A useful function is  `model.matrix`, which will create a *design matrix* from one of the columns in your `sampleInfo`. Here I choose `sampleInfo$group`.
+
+The design matrix is a matrix of `0` and `1`s; one row for each sample and one column for each sample group. A `1` in a particular row and column indicates that a given sample (the row) belongs to a given group (column).
+
+```{r}
+library(limma)
+design <- model.matrix(~0+sampleInfo$group)
+design
+## the column names are a bit ugly, so we will rename
+colnames(design) <- c("Normal","Tumour")
+```
+
+
+
+The `lmFit` function is used to fit the model to the data. The result of which is to estimate the expression level in each of the groups that we specified.
+
+```{r}
+fit <- lmFit(exprs(gse), design)
+head(fit$coefficients)
+```
+
+In order to perform the *differential* analysis, we have to define the contrast that we are interested in. In our case we only have two groups and one contrast of interest. Multiple contrasts can be defined in the `makeContrasts` function.
+
+```{r}
+contrasts <- makeContrasts(Tumour - Normal, levels=design)
+
+## can define multiple contrasts
+## e.g. makeContrasts(Group1 - Group2, Group2 - Group3,....levels=design)
+
+fit2 <- contrasts.fit(fit, contrasts)
+```
+
+Finally, apply the *empirical Bayes'* step to get our differential expression statistics and p-values.
+
+```{r}
+fit2 <- eBayes(fit2)
+```
+
+We usually get our first look at the results by using the `topTable` command
+
+```{r}
+topTable(fit2)
+```
+
+The `topTable` function automatically displays the results for the first contrast. If you want to see results for other contrasts
+```{r}
+topTable(fit2, coef=1)
+### to see the results of the second contrast (if it exists)
+## topTable(fit2, coef=2)
+
+```
+
+If we want to know how many genes are differentially-expressed overall we can use the `decideTests` function.
+
+```{r}
+decideTests(fit2)
+
+table(decideTests(fit2))
+```
+
+
+# Further processing and visualisation of DE results
+
+At the moment our results are not particularly easy to navigate as the only information to identify each gene is the identifier that the microarray manufacturer has assigned. Fortunately, the GEO entry contains extensive annotation that we can add. The annotation data can be retrieved with the `fData` function and we restrict to columns we are interested in using `select`.
+
+**For your own data, you will have to choose the columns that are of interest to you. You probably won't have the same column headings used here**.
+
+Once an annotation data frame has been created, it can be assigned to our results.
+
+```{r}
+anno <- fData(gse)
+anno <- select(anno,Symbol,Entrez_Gene_ID,Chromosome,Cytoband)
+fit2$genes <- anno
+topTable(fit2)
+```
+
+
+The "*Volcano Plot*" function is a common way of visualising the results of a DE analysis. The $x$ axis shows the log-fold change and the $y$ axis is some measure of statistical significance, which in this case is the log-odds, or "B" statistic. A characteristic "volcano" shape should be seen.
+
+First we create a data frame that we can visualise in `ggplot2`. Specifying the `number` argument to `topTable` creates a table containing test results from all genes. We also put the probe IDs as a column rather than row names.
+
+```{r}
+full_results <- topTable(fit2, number=Inf)
+full_results <- tibble::rownames_to_column(full_results,"ID")
+```
+
+The basic plot is created as follows:-
+
+```{r}
+## Make sure you have ggplot2 loaded
+library(ggplot2)
+ggplot(full_results,aes(x = logFC, y=B)) + geom_point()
+```
+
+The flexibility of `ggplot2` allows us to automatically label points on the plot that might be of interest. For example, genes that meet a particular p-value and log fold-change cut-off. With the code below the values of `p_cutoff` and `fc_cutoff` can be changed as desired.
+
+```{r}
+## change according to your needs
+p_cutoff <- 0.05
+fc_cutoff <- 1
+
+full_results %>% 
+  mutate(Significant = adj.P.Val < p_cutoff, abs(logFC) > fc_cutoff ) %>% 
+  ggplot(aes(x = logFC, y = B, col=Significant)) + geom_point()
+```
+
+Furthermore, we can label the identity of some genes. Below we set a limit of the top "N" genes we want to label, and label each gene according to it's `Symbol`. 
+
+
+# Filtering and exporting the results table
+
+The `filter` function from `dplyr` gives a convenient way to interrogate the table of results.
+
+```{r}
+## Get the results for particular gene of interest
+filter(full_results, Symbol == "SMOX")
+## Get results for genes with TP53 in the name
+filter(full_results, grepl("TP53", Symbol))
+## Get results for one chromosome
+filter(full_results, Chromosome==20)
+```
+
+We can also filter according to p-value (adjusted) and fold-change cut-offs
+
+```{r}
+p_cutoff <- 0.05
+fc_cutoff <- 1
+
+filter(full_results, adj.P.Val < 0.05, abs(logFC) > 1)
+```
+
+These results can be exported with the `write_csv` function.
+
+```{r}
+library(readr)
+filter(full_results, adj.P.Val < 0.05, abs(logFC) > 1) %>%
+  write_csv(path="filtered_de_results.csv")
+```
