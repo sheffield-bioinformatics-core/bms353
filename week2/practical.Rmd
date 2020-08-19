@@ -297,10 +297,16 @@ filter(test_results, p.value < 0.05, abs(dm) > 1) %>%
 ```
 
 
-### Exercises for next time
+# Exercise for next time
 
 <div class="exercise">
 
-- Download the dataset for GEO entry [give URL]
-- 
+- Create a new RStudio project and write a markdown file to document the analysis of the GEO dataset `GSE33126`
+- Include the key stages of the analysis in your report
+  + downloading the data
+  + quality assessment
+  + log$_2$ transformation
+  + statistical testing
+  + export the results
+  
 </div>

@@ -164,7 +164,7 @@ The documentation standards are also higher than other R repositories. Each pack
 - The Bioconductor project distributes software, workflows, annotation and example datasets
 - Help on a particular package can be obtained via it's user guide, or from the support forum.
 
-### Exercises for next time
+# Exercise for next time
 
 <div class="exercise">
 Install the following set of packages that are available through Bioconductor.
