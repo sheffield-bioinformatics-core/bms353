@@ -14,6 +14,7 @@ editor_options:
 
 # Reproducible research in Rstudio
 
+In this section we review the various ways of writing and running R code within RStudio and discuss their implications for reproducible research.
 
 ## The R console
 
@@ -25,25 +26,27 @@ A record of each command is kept in the History panel (top-right), and previous 
 
 We would tend to use the R console for typing commands that we don't necessarily need to keep a record of. e.g. installing packages.
 
-If you need to run analyses that require a lot of memoryyou will probably require access to a high-performance computing environment; such as sharc or bessemer at UoS. Analysis on such environments is performed via a terminal without a graphical interface. This means no RStudio, but you can still run commands via the R console. You can also write R scripts to perform your analysis.
+If you need to run analyses that require a lot of memoryyou will probably require access to a high-performance computing environment; such as sharc or bessemer at UoS. Analysis on such environments is performed via a terminal without a graphical interface. Although this means you won' have access RStudio, you can still run commands via the R console. You can also write R *scripts* to perform your analysis.
 
 ## An R script
 
-A new R script can be created via the menus in RStudio. The script is a file existing on your hard drive and can be used to document your analysis. In the screenshot below, an R script `myscript.R` was created to perform a few basic commands and make a plot from an in-built dataset in R.
+A new R script can be created via the menus in RStudio. The script is a text file existing on your hard drive and can be used to document your analysis. In the screenshot below, an R script `myscript.R` was created to perform a few basic commands and make a plot from an in-built dataset in R.
 
 ![](images/script.PNG)
 
-There is a limited ability to add explanations and commentary to the file via the use of comments; e.g. lines 3 and 5 in the screenshot that have a `#` at the start of the line.
+There is a limited ability to add explanations and commentary to the file via the use of comments; e.g. lines 3 and 5 in the screenshot that have a `#` at the start of the line. Rstudio formats the text for the comments in green.
 
 The output of each line of code appears in the console, and any plots generated appear in the bottom-right panel. It is a step in the right direction, but far from a report that we can distribute to our peers. In order to make a report we would have to (manually) export the plots from RStudio and copy into another document or presentation. If the underlying data change, this becomes problematic; as illustrated in the following video
 
+<div class="information">
 [A non reproducible workflow](https://youtu.be/s3JldKoA0zw) - 2 minutes
+</div>
 
 ## An R markdown file
 
 An R markdown file solves the problem described above whereby plots, tables and statistics generated during the course of the analysis have to be manually copied into a report document. This process lends itself to errors and uncertainty over whether the latest version of the data are being used in the analysis.
 
-You can think of the R markdown as a template used to create a report; which can be in Word, PDF or HTML formats (creating PDF will require you to have the latex typesetting program installed). The language used to create the report is *markdown* which is a popular typesetting language. The screenshot below shows an example markdown file to analyse the `PlantGrowth` dataset.
+You can think of the R markdown as a template used to create a report; which can be in Word, PDF or HTML formats (creating PDF will require you to have the latex typesetting program installed). The language used to create the report is *markdown* which is a popular typesetting language. The screenshot below shows an example markdown file to analyse the `PlantGrowth` dataset, which is a dataset available through R.
 
 ![](images/markdown.PNG)
 
@@ -96,11 +99,43 @@ This stops any warnings or messages from being printed to the report. These can 
 
 ## In-line R code
 
+When writing a commentary to accompany your analysis you might have to refer to specific results you have calculated. e.g. for RNA-seq the p-values or fold-changes of particular genes of interest. Rather than having to manually type the values each time (which can change if we tweak our parameters), we can insert R code within our text to retrieve the value of a particular variable.
+
+
+```{r}
+## for demonstration only.
+p <- 0.05
+fc <- 2.35
+```
+
+
+```{r, echo = F}
+p <- "`r p`"
+fc <- "`r fc`"
+
+```
+
+Using a single *backtick* allows R code to be evaluated. Here we print the values of `p` and `fc` from our environment.
+
+```
+the p-value for Gene X is `r p` with a fold-change of `r fc`
+```
+```{r, echo = F}
+p <- 0.05
+fc <- 2.35
+```
+
+The text would be rendered thus. So if the value of `p` and `fc` change the text would automatically update.
+
+the p-value for Gene X  is `r p` with a fold-change of `r fc`
+
+
+
 ### Exercise
 
 <div class="exercise">
 
-- Create an R notebook file to read the file `gapminder_pre2007.csv` into R and produce a scatter plot of gdpPercap versus lifeExp (as we did in the introductory R course).
+- Create an R notebook file to read the file `gapminder_pre2007.csv` into R and produce a scatter plot of `gdpPercap` versus `lifeExp` (as we did in the introductory R course).
 - Make sure that you can preview your report and create a HTML file.
 - Now imagine that the dataset has now been updated to include 2007 metrics (file `gapminder.csv`). Update your report to read the full dataset and create a new report
 
@@ -124,16 +159,17 @@ The documentation standards are also higher than other R repositories. Each pack
 
 # Summary
 
-- R markdown notebooks can facilitate reproducibile research
+- R markdown notebooks can facilitate reproducible research
 - Reports created from an R notebook can be shared with our peers who can see the code we used and run for themselves.
 - The Bioconductor project distributes software, workflows, annotation and example datasets
 - Help on a particular package can be obtained via it's user guide, or from the support forum.
 
-### Exercise for next time
+### Exercises for next time
 
 <div class="exercise">
-Install the following set of packages
+Install the following set of packages that are available through Bioconductor.
 
-- `DESeq2`, 
+- `DESeq2`, `pheatmap`, `org.Mm.eg.db`. `genefilter`
 
+(some exercise about markdown?)
 </div>
