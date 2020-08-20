@@ -1,0 +1,477 @@
+---
+title: "RNA-seq Analysis in R"
+subtitle: "Annotation and Visualisation of RNA-seq results"
+author: "Mark Dunning"
+date: "February 2020"
+output:
+  html_notebook:
+    toc: yes
+    toc_float: yes
+  html_document:
+    toc: yes
+    toc_float: yes
+minutes: 300
+layout: page
+
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,fig.width = 12,message=FALSE,warning=FALSE)
+library(dplyr)
+
+```
+
+**Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
+Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016
+
+## Resources and data files
+
+This material has been created using the following resources:  
+http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
+http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
+http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
+https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
+
+
+
+Before starting this section, we will make sure we have all the relevant objects from the Differential Expression analysis present.
+
+```{r}
+suppressPackageStartupMessages(library(DESeq2))
+
+load("Robjects/DE.Rdata")
+load("Robjects/preprocessing.Rdata")
+```
+
+# Overview
+
+- Visualising DE results
+- Getting annotation using Bioconductor databases
+- Getting annotation using BiomaRt
+- Customising RNA-seq plots with `ggplot2`
+- Retrieving gene models
+
+
+
+
+We can now have a list of genes ordered according to their evidence for being differentially-expressed.
+
+```{r}
+library(dplyr)
+library(tibble)
+
+results.status <- as.data.frame(results(de.mf,contrast=c("Status","lactation","virgin"))) %>%
+  rownames_to_column("ENSEMBL")
+  
+
+results.ordered <- arrange(results.status, padj)
+head(results.ordered)
+```
+
+In `DESeq2`, the function plotMA shows the log2 fold changes attributable to a given variable over the mean of normalized counts for all the samples in the DESeqDataSet. Points will be colored red if the adjusted p value is less than 0.1. Points which fall out of the window are plotted as open triangles pointing either up or down.
+
+The log2 fold change for a particular comparison is plotted on the y-axis and the average of the counts normalized by size factor is shown on the x-axis ("M" for minus, because a log ratio is equal to log minus log, and "A" for average). Each gene is represented with a dot. Genes with an adjusted p value below a threshold (here 0.1, the default) are shown in red.
+
+
+```{r}
+plotMA(results(de.mf,contrast=c("Status","lactation","virgin")))
+```
+
+***Note*** You may see an error message when trying to make the above MA plot. This could be because both `limma` and `DESeq2` have a function called `plotMA`, and R can sometimes pick the wrong function. To explictly use the `DESeq2` function you can use:-
+
+```{r}
+DESeq2::plotMA(results(de.mf,contrast=c("Status","lactation","virgin")))
+```
+
+MA-plots often display a fanning-effect at the left-hand side (genes with low numbers of counts) due to the high variability of the measurements for these genes. For more informative visualization and more accurate ranking of genes by effect size (the log fold change may sometimes be referred to as an effect size), the `DESeq2` authors recommend "shrinking" the log fold-changes which is available in DESeq2’s `lfcShrink` function. This results in more stable fold change values. The p-values are unaffected.
+
+```{r}
+res_LvsV <- lfcShrink(de.mf,contrast=c("Status","lactation","virgin"))
+DESeq2::plotMA(res_LvsV)
+```
+
+We will re-define our results object to use these new fold-changes.
+
+```{r}
+results.ordered <- as.data.frame(res_LvsV) %>% 
+  rownames_to_column("ENSEMBL") %>% 
+  arrange(padj)
+head(results.ordered)
+```
+
+Another common plot for displaying the results of a differential expression analysis is a *volcano plot*
+
+```{r}
+library(ggplot2)
+results.ordered %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj))) + geom_point()
+
+```
+
+
+It can also be useful to examine the counts of reads for a single gene across the groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a pseudocount of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
+
+```{r}
+plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"))
+```
+
+If we want greater control over how to visualise the data, we can use the `plotCounts` function to return the count data, but not actually produce the plot:-
+
+```{r}
+plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status"),returnData=TRUE)
+```
+
+
+> ## Challenge 1 {.challenge}
+>
+> 1. Use the option `returnData=TRUE` to get a data frame containing the counts of `ENSMUSG00000000381` in the different development stages. Visualise these data using `ggplot2` (see plot A below). 
+> 2. Repeat the volcano plot from above, but use a different colour to indicate which genes are significant with an adjusted p-value less than 0.05. See plot B below
+> 3. (Optional) The argument `intgroup=` can be used to retrieve and plot data from multiple variables of interest in the data. Use the value `intgroup=c("Status","CellType")` and compare the counts between different cell types and status. See plot C below.
+> HINT: To get the counts on the same scale as displayed by the plotCounts function you will need to add `+scale_y_log10` in your ggplot2 code
+
+```{r echo=FALSE}
+p1 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) + scale_y_log10()
+p2 <- results.ordered %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), col=padj < 0.05)) + geom_point()
+p3 <- plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData = TRUE) %>%   ggplot(aes(x = Status, y = count,col=Status)) + geom_jitter(width=0.1) + facet_wrap(~CellType) + scale_y_log10()
+
+cowplot::plot_grid(p1,p2,p3,labels=LETTERS[1:3])
+
+```
+
+
+However, it is hard to assess the biological significance of such a gene without more information about . To perform such a task we need to map between the identifiers we have in the `DESeq2` output and more familiar names.
+
+
+## Adding annotation to the DESeq2 results
+
+There are a number of ways to add annotation, but we will demonstrate how to do this using the *org.Mm.eg.db* package. This package is one of several *organism-level* packages which are re-built every 6 months. These packages are listed on the [annotation section](http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData) of the Bioconductor, and are installed in the same way as regular Bioconductor packages. An alternative approach is to use `biomaRt`, an interface to the [BioMart](http://www.biomart.org/) resource. BioMart is much more comprehensive, but the organism packages fit better into the Bioconductor workflow.
+
+
+```{r eval=FALSE}
+### Only execute when you need to install the package
+install.packages("BiocManager")
+BiocManager::install("org.Mm.eg.db")
+# For Human
+BiocManager::install("org.Hs.eg.db")
+```
+
+The packages are larger in size that Bioconductor software pacakges, but essentially they are databases that can be used to make *offline* queries. 
+
+```{r message=FALSE}
+library(org.Mm.eg.db)
+```
+
+
+First we need to decide what information we want. In order to see what we can extract we can run the `columns` function on the annotation database.
+
+```{r}
+columns(org.Mm.eg.db)
+```
+
+We are going to filter the database by a key or set of keys in order to extract the information we want. Valid names for the key can be retrieved with the `keytypes` function.
+
+```{r}
+keytypes(org.Mm.eg.db)
+```
+
+We should see `ENSEMBL`, which is the type of key we are going to use in this case. If we are unsure what values are acceptable for the key, we can check what keys are valid with `keys`
+
+```{r}
+keys(org.Mm.eg.db, keytype="ENSEMBL")[1:10]
+```
+
+
+
+For the top gene in our analysis the call to the function would be:-
+
+```{r eval=FALSE}
+select(org.Mm.eg.db, keys="ENSMUSG00000000381",
+       keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
+)
+
+```
+
+Unfortunately, the authors of `dplyr` and `AnnotationDbi` have both decided to use the name `select` in their packages. To avoid confusion, the following code is sometimes used:-
+
+```{r}
+AnnotationDbi::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME"))
+```
+
+
+To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information into a new data frame using the `select` function.
+
+```{r}
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
+              columns=c("SYMBOL","GENENAME"),
+              keytype="ENSEMBL")
+# Have a look at the annotation
+head(anno)
+
+```
+
+However, we have a problem that the resulting data frame has more rows than our results table. This is due to the *one-to-many* relationships that often occur when mapping between various identifiers.
+
+```{r}
+dim(anno)
+dim(results.ordered)
+```
+
+Such duplicated entries can be identified using the `duplicated` function. 
+
+```{r}
+dup_ids <- anno$ENSEMBL[duplicated(anno$ENSEMBL)]
+filter(anno, ENSEMBL %in% dup_ids) %>% 
+  arrange(ENSEMBL) %>% head
+
+```
+
+Fortunately, there are not too many so hopefully we won't lose too much information if we discard the entries that are duplicated. The first occurence of the duplicated ID will still be included in the table.
+
+```{r}
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
+              columns=c("ENSEMBL","SYMBOL","GENENAME","ENTREZID"),
+              keytype="ENSEMBL") %>% 
+  filter(!duplicated(ENSEMBL))
+dim(anno)
+```
+
+
+We can bind in the annotation information to the `results` data frame. 
+
+```{r}
+results.annotated <- left_join(results.ordered, anno,by="ENSEMBL")
+head(results.annotated)
+
+```
+
+
+We can save the results table using the `write.csv` function, which writes the results out to a csv file that you can open in excel.
+
+```{r}
+write.csv(results.annotated,file="virgin_vs_lactation_DESeq_annotated.csv",row.names=FALSE)
+```
+
+
+
+
+We have already seen the use of a heatmap as a quality assessment tool to visualise the relationship between samples in an experiment. Another common use-case for such a plot is to visualise the results of a differential expression analysis.
+
+Here we will take the top 10 genes from the differential expression analysis and produce a heatmap with the `pheatmap` package. The default colour palette goes from low expression in blue to high expression in red, which is a good alternative to the traditional red/green heatmaps which are not suitable for those with forms of colour-blindness.
+
+The counts we are visualising are the *variance-stablised* counts, which are more appropriate for visualisation.
+
+```{r}
+library(pheatmap)
+top_genes <- results.annotated$ENSEMBL[1:10]
+
+vsd <- vst(dds)
+pheatmap(assay(vsd)[top_genes,])
+
+
+```
+
+The heatmap is more informative if we add colours underneath the sample dendrogram to indicate which sample group each sample belongs to. This we can do by creating a data frame containing metadata for each of the samples in our dataset. With the `DESeq2` workflow we have already created such a data frame. We have to make sure the the rownames of the data frame are the same as the column names of the counts matrix.
+
+```{r}
+sampleInfo <- as.data.frame(colData(dds)[,c("Status","CellType")])
+
+pheatmap(assay(vsd)[top_genes,],
+         annotation_col = sampleInfo)
+```
+
+Any plot we create in RStudio can be saved as a png or pdf file. We use the `png` or `pdf` function to create a file for the plot to be saved into and run the rest of the code as normal. The plot does not get displayed in RStudio, but printed to the specified file. 
+
+```{r}
+
+png("heatmap_top10_genes.png",width=800,height=800)
+pheatmap(assay(vsd)[top_genes,],
+         annotation_col = sampleInfo)
+# dev.off()
+```
+
+
+> ## Challenge 2{.challenge}
+> 1. Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes **between pregnant and luminal**
+> 2. Change the plot so that gene names are displayed rather than Ensembl IDs
+> 3. Save the plot to a pdf file
+> HINT: check the help for the `pheatmap` function to see how column and row labels can be changed
+
+### Accessing the sample or gene clusters
+
+The heatmap displays relationships between samples and genes in our study as a useful visualisation. In this example we can easily identify which samples are most similar based on their expression patterns. However, for larger dataset this may be more problematic. We can extract data the sample relationships about if we manually perform the clustering steps used by `pheatmap`. First is to cluster the samples with the default distance matrix and clustering algorithms. 
+
+```{r}
+mat <- assay(vsd)[top_genes,]
+## Calculate the distance matrix between samples
+d_samples <- dist(t(mat))
+
+plot(hclust(d_samples))
+rect.hclust(hclust(d_samples),k=2)
+```
+
+We can then "cut" the dendrogram to give a set number of clusters. Each sample has been assigned a label of `1` or `2` depending on which cluster it belongs to.
+
+```{r}
+clusters <- cutree(hclust(d_samples),k = 2)
+clusters
+
+```
+
+The groupings could then be tabulated against with the sample metadata to see if particular biological groups are associated with the new clusters we have identified.
+
+```{r}
+table(clusters, colData(dds)$Status)
+
+```
+
+### Adding gene names to a volcano plot
+
+Now that we have an annotated table of results, we can add the gene names to some of the other plots we have created. This should be straightforward as ggplot2 has a `label` aesthetic that can be mapped to columns in a data frame. The `geom_text` plot will then display the labels. However, the following plot is a bit crowded.
+
+```{r}
+## Not a good idea to run this!!
+results.annotated %>% 
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=SYMBOL)) + geom_point() + geom_text()
+```
+
+
+The problem here is that ggplot2 is trying to label every point with a name; not quite what we want. The trick is to create a label that is blank for most genes and only labels the points we are interested in. The `ifelse` function in R is a convenient way to set the entries in a vector based on a *logical* expression. In this case, make the values in `Label` the same as the gene symbol if the gene is in our list of "top genes". Otherwise, points get labeled with a blank string `""`.
+
+For clarity, we also make the points slightly transparent and use a different colour for the text.
+
+```{r}
+N <- 10
+top_genes <- results.annotated$ENSEMBL[1:N]
+results.annotated %>% 
+  mutate(Label = ifelse(ENSEMBL %in% top_genes, SYMBOL, "")) %>%  
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=Label)) + geom_point(alpha=0.4) + geom_text(col="blue")
+```
+
+Finally, a slightly better positioning of text is given by the `ggrepel` package.
+
+```{r}
+if(!require(ggrepel)) install.packages("ggrepel")
+
+results.annotated %>% 
+  mutate(Label = ifelse(ENSEMBL %in% top_genes, SYMBOL, "")) %>%  
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=Label)) + geom_point(alpha=0.4) + geom_text_repel(col="blue")
+```
+
+
+### Annotation with the biomaRt resource
+
+The Bioconductor package have the convenience of being able to make queries offline. However, they are only available for certain organisms. If your organism does not have an `org.XX.eg.db` package listed on the Bioconductor annotation page (http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData), an alternative is to use biomaRt which provides an interface to the popular biomart annotation resource. 
+
+The first step is to find the name of a database that you want to connect to
+
+```{r}
+library(biomaRt)
+listMarts()
+ensembl=useMart("ENSEMBL_MART_ENSEMBL")
+# list the available datasets (species). Replace mouse with the name of your organism
+listDatasets(ensembl) %>% filter(grepl("Mouse",description))
+
+```
+
+```{r}
+ensembl = useDataset("mmusculus_gene_ensembl", mart=ensembl)
+```
+
+Queries to `biomaRt` are constructed in a similar way to the queries we performed with the `org.Mm.eg.db` package. Instead of `keys` we have `filters`, and instead of `columns` we have attributes. The list of acceptable values is much more comprehensive that for the `org.Mm.eg.db` package.
+
+```{r}
+listFilters(ensembl) %>% 
+    filter(grepl("ensembl",name))
+```
+
+
+```{r eval=FALSE}
+listAttributes(ensembl) %>% 
+    filter(grepl("gene",name))
+```
+
+An advantage over the `org..` packages is that positional information can be retrieved
+
+```{r}
+attributeNames <- c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name')
+
+getBM(attributes = attributeNames,
+      filters = "ensembl_gene_id",
+      values=top_genes,
+      mart=ensembl)
+```
+
+> ## Challenge 3{.challenge}
+> 1. Use biomaRt to create an data frame containing the entrezgene, gene symbol and genomic coordinates (chromosome, start, end) for the Ensembl IDs in the DESeq2 results
+> 2. Remove duplicates entries from the new data frame
+> 3. Join the biomaRt annotation to the DESeq2 results to produce a data frame with differential expression results and annotation
+> 4. Write the joined data frame to a csv file
+
+```{r}
+
+```
+
+### Obtaining gene models with Bioconductor
+
+Using biomaRt as above allows us to retrieve the genomic coordinates of a given gene. If we want more-comprehensive information about the structue of a gene (and indeed all genes in the transcriptome), we can use one of several pre-built *transcript database* packages.
+
+Retrieving the coordinates for a particular gene (or set of genes) uses the same `select` function as for the `org.Mm.eg.db` package, but checking for different `columns` and `keytypes`.
+
+```{r}
+library(TxDb.Mmusculus.UCSC.mm10.knownGene)
+txdb <- TxDb.Mmusculus.UCSC.mm10.knownGene
+columns(txdb)
+
+AnnotationDbi::select(txdb, columns = c("EXONID","EXONSTART","EXONCHROM"),
+                      keys="22373", 
+                      keytype = "GENEID")
+```
+
+Alternatively we can grab the coordinates of all genes in a single object and then subset accordingly. This allows us to perform all kinds of subset operation using the `GenomicFeatures` framework in Bioconductor.
+
+```{r}
+exons <- exonsBy(txdb,"gene")
+exons
+exons[["22373"]]
+```
+
+### Interactive graphs and tables
+
+It is often useful to be able to explore our results in an interactive manner; searching for our favourite genes of interest and plotting on-the-fly whether they are statistically significant in our dataset or not.
+
+Such a visualisation is possible with the [Glimma](https://academic.oup.com/bioinformatics/article-lookup/doi/10.1093/bioinformatics/btx094) Bioconductor package. 
+
+It takes our `DESeq2` results object, annotation table and normalized counts, and produces a HTML page including a sortable results table, MA-plot and scatter plot. Particular genes can be searched among the table and their expression patterns can be displayed. Alternatively we can click on particular point in the plot and display their stats.
+
+
+
+```{r}
+
+results <- results(de.mf,contrast=c("Status","lactation","virgin"))
+
+## Repeat the annotation, as the previous annotation table was created using an ordered results table
+
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=rownames(results),
+              columns=c("SYMBOL","GENENAME"),
+              keytype="ENSEMBL") %>% 
+  filter(!duplicated(ENSEMBL))
+
+```
+
+```{r}
+## Make sure we have normalised counts before proceeding
+dds <- estimateSizeFactors(dds)
+```
+
+```{r}
+## Load the Glimma package and create the report
+library(Glimma)
+glMDPlot(results,
+         anno,
+         groups = colData(dds)$Status,
+         counts = counts(dds,normalized=TRUE),
+         transform = TRUE,
+         side.main = "ENSEMBL")
+```
+
+

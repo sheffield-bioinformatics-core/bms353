@@ -1,0 +1,312 @@
+---
+title: "BMS353 Bioinformatics for Biomedical Science - Week 2"
+author: "Module Coordinator Mark Dunning"
+output: 
+  html_notebook: 
+    toc: yes
+    toc_float: yes
+    css: stylesheets/styles.css
+editor_options: 
+  chunk_output_type: inline
+---
+
+<img src="images/logo-sm.png" style="position:absolute;top:40px;right:10px;" width="200" />
+
+
+# Introduction
+
+In this tutorial we will get our first look at how to analyse high-throughput biological data in R. The majority of the course will discuss RNA-seq data for gene expression, but in this session we will consider data from an older technology; *microarrays*.
+
+Although considered outdated by many, the prevalence of microarrays in public repositories make them a valuable resource.
+
+You will need to have installed the following packages before starting:-
+
+```{r eval=FALSE}
+install.packages("BiocManager")
+BiocManager::install("GEOquery")
+BiocManager::install("limma")
+BiocManager::install("genefilter")
+
+```
+
+
+# Importing the data
+
+The data from this experiment comprises nine paired tumor/normal colon tissues on Illumina HT12\_v3 gene expression Beadchips. We will assume that you already know the accession number (GSE....) for the dataset that you want to download.
+
+
+```{r echo=FALSE,message=FALSE}
+library(GEOquery)
+library(limma)
+```
+
+The [landing page](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE33126) has a link to download the *series matrix*. We can download this within R if we wish using the function `download.file`.
+
+The `getGEO` function from `GEOquery` can then import these data into R.
+
+```{r cache=TRUE, message=FALSE}
+library(GEOquery)
+## can change the url to be the dataset that you want.
+
+url <- "https://ftp.ncbi.nlm.nih.gov/geo/series/GSE33nnn/GSE33126/matrix/GSE33126_series_matrix.txt.gz"
+
+download.file(url, destfile = "GSE33126_series_matrix.txt.gz")
+
+gse <- getGEO(filename = "GSE33126_series_matrix.txt.gz")
+
+```
+
+## Data Representation
+
+We usually print the contents of an object to the screen by running a line of code corresponding to the name of the object. However, the `gse` object works a bit differently.
+
+```{r}
+gse
+
+```
+
+```{r eval=FALSE}
+pData(gse) ## print the sample information
+fData(gse) ## print the gene annotation
+exprs(gse) ## print the expression data
+```
+
+
+# Quality Asssessment and Normalisation (if required)
+
+For visualisation and statistical analysis, we will inspect the data to discover what *scale* the data are presented in. The methods we will use assume the data are on a log$_2$ scale; typically in the range of 0 to 16. 
+
+The `exprs` function can retrieve the expression values as a data frame; with one column per-sample and one row per-gene.
+
+The `summary` function can then be used to print the distributions.
+
+```{r}
+## exprs get the expression levels as a data frame and get the distribution
+summary(exprs(gse))
+```
+
+From this output we clearly see that the values go beyond 16, so we will need to perform a $log_2$ transformation. A `boxplot` can also be generated to see if the data have been normalised. If so, the distributions of each sample should be highly similar.
+
+```{r}
+normData <- log2(exprs(gse))
+boxplot(normData,outline=FALSE)
+```
+
+## Inspect the clinical variables
+
+Data submitted to GEO contain sample labels assigned by the experimenters, and some information about the processing protocol. All these data can be extracted by the `pData` function. 
+
+**For your own data, you will have to decide which columns will be useful in the analysis**. This will include the column giving the main comparison(s) of interest and any potential confounding factors. In this particular dataset it looks like `source_name_ch1` and `characteristics_ch1.1`.
+
+We can use the `select` function from `dplyr` to display just these columns of interest. At this stage it will also be useful to rename the columns to something more convenient using the `rename` function.
+
+```{r}
+library(dplyr)
+sampleInfo <- pData(gse)
+sampleInfo
+
+## source_name_ch1 and characteristics_ch1.1 seem to contain factors we might need for the analysis. Let's pick just those columns
+
+sampleInfo <- select(sampleInfo, source_name_ch1,characteristics_ch1.1)
+
+## Optionally, rename to more convenient column names
+sampleInfo <- rename(sampleInfo,group = source_name_ch1, patient=characteristics_ch1.1)
+```
+
+Our sample information is therefore:-
+
+```{r}
+sampleInfo
+```
+
+## Sample clustering
+
+Unsupervised analysis is a good way to get an understanding of the sources of variation in the data. It can also identify potential outlier samples.
+
+The function `cor` can calculate the correlation (on scale 0 - 1) in a pairwise fashion between all samples. This can be then visualised on a heatmap. Among the many options for creating heatmaps in R, the `pheatmap` library is one of the more popular ones. The only argument it requires is a matrix of numerical values (such as the correlation matrix).
+
+```{r}
+library(pheatmap)
+## argument use="c" stops an error if there are any missing data points
+
+corMatrix <- cor(normData,use="c")
+pheatmap(corMatrix)                
+```
+
+We can incorporate sample information onto the plot to try and understand the clustering. We have already created such a data frame previously (`sampleInfo`). However, we need to take care that the rownames of these data match the columns of the correlation matrix.
+
+```{r}
+## Print the rownames of the sample information and check it matches the correlation matrix
+rownames(sampleInfo)
+colnames(corMatrix)
+
+## If not, force the rownames to match the columns
+
+rownames(sampleInfo) <- colnames(corMatrix)
+pheatmap(corMatrix,
+         annotation_col=sampleInfo)    
+```
+
+Here we see that the main separation is due to normal vs tumours; as we hope.
+
+Another approach to visualise the relationships between samples is Principal Components Analysis (PCA), which we will see later in the course.
+
+## Exporting the data
+
+We can export the expression data to a `csv` for inspection in Excel using the `write_csv` function from `readr`. The expression values themselves will probably not be very useful as they will be named according to manufacturer ID rather than gene name (for example). We can create a matrix by joining the expression matrix with the feature annotation.
+
+```{r}
+library(readr)
+full_output <- cbind(fData(gse),normData)
+write_csv(full_output, path="gse_full_output.csv")
+```
+
+The annotation from GEO might contain lots of columns that we are not particularly interested in. To keep the data tidier we can use the `select` function to only print particular columns in the output.
+
+```{r}
+features <- fData(gse)
+View(features)
+### Look at the features data frame and decide the names of the columns you want to keep
+features <- select(features,Symbol,Entrez_Gene_ID,Chromosome,Cytoband)
+full_output <- cbind(features,exprs(gse))
+write_csv(full_output, path="gse_full_output.csv")
+
+```
+
+
+# Statistical Testing
+
+By far the most-popular package for performing differential expression is `limma`. The user-guide is extensive and covers the theory behind the analysis and many use-cases (Chapters 9 and 17 for single-channel data such as Illumina and Affymetrix)
+
+https://bioconductor.org/packages/release/bioc/vignettes/limma/inst/doc/usersguide.pdf
+
+To illustrate the process of statistical testing, we will use a simple t-test, **which is not recommended in practice**.
+
+Visualising a single gene
+
+```{r}
+boxplot(normData[1,]~fac)
+```
+testing for one gene
+
+```{r}
+t.test(normData[1,]~fac,var.equal=TRUE)
+```
+
+It would be tedious to test each gene individually. Fortunately the `genefilter` package includes a convenient `rowttests` function that will rapidly test each gene.
+
+
+```{r}
+library(genefilter)
+fac <- as.factor(sampleInfo$group)
+test_results <- rowttests(normData, fac)
+head(test_results)
+```
+
+
+```{r}
+test_results <- tibble::rownames_to_column(test_results,"ID")
+```
+
+## Multiple testing correction
+
+```{r}
+?p.adjust
+padj <- p.adjust(test_results$p.value,method="BH")
+```
+
+
+### Exercise
+
+<div class="exercise">
+- How would you re-arrange the rows of`test_results` according to p-value? Which gene has the lowest p-value?
+- Add a new column `padj` to `test_results`. Consult the R introductory course or `dplyr` cheatsheet to recall how to add columns to a data frame.
+</div>
+
+# Further processing and visualisation of DE results
+
+At the moment our results are not particularly easy to navigate as the only information to identify each gene is the identifier that the microarray manufacturer has assigned. Fortunately, the GEO entry contains extensive annotation that we can add. The annotation data can be retrieved with the `fData` function and we restrict to columns we are interested in using `select`.
+
+**For your own data, you will have to choose the columns that are of interest to you. You probably won't have the same column headings used here**.
+
+Once an annotation data frame has been created, it merged to our results using the `left_join` function.
+
+```{r}
+anno <- fData(gse)
+anno <- select(anno,Symbol,Entrez_Gene_ID,Chromosome,Cytoband)
+anno <- tibble::rownames_to_column(anno,"ID")
+test_results <- left_join(test_results,anno)
+```
+
+
+
+
+
+The "*Volcano Plot*" function is a common way of visualising the results of a DE analysis. The $x$ axis shows the log-fold change and the $y$ axis is some measure of statistical significance, which in this case is the log-odds, or "B" statistic. A characteristic "volcano" shape should be seen.
+
+
+The basic plot is created as follows:-
+
+```{r}
+## Make sure you have ggplot2 loaded
+library(ggplot2)
+ggplot(test_results,aes(x = dm, y=-log10(p.value))) + geom_point()
+```
+
+The flexibility of `ggplot2` allows us to automatically label points on the plot that might be of interest. For example, genes that meet a particular p-value and log fold-change cut-off. With the code below the values of `p_cutoff` and `fc_cutoff` can be changed as desired.
+
+```{r}
+## change according to your needs
+p_cutoff <- 0.05
+fc_cutoff <- 1
+
+test_results %>% 
+  mutate(Significant = p.value < p_cutoff, abs(dm) > fc_cutoff ) %>% 
+  ggplot(aes(x = dm, y = -log10(p.value), col=Significant)) + geom_point()
+```
+
+
+# Interpretation of Results
+
+The `filter` function from `dplyr` gives a convenient way to interrogate the table of results.
+
+```{r}
+## Get the results for particular gene of interest
+filter(test_results, Symbol == "SMOX")
+## Get results for genes with TP53 in the name
+filter(test_results, grepl("TP53", Symbol))
+## Get results for one chromosome
+filter(test_results, Chromosome==20)
+```
+
+We can also filter according to p-value (adjusted) and fold-change cut-offs
+
+```{r}
+p_cutoff <- 0.05
+fc_cutoff <- 1
+
+filter(test_results, p.value < 0.05, abs(dm) > 1)
+```
+
+These results can be exported with the `write_csv` function.
+
+```{r}
+library(readr)
+filter(test_results, p.value < 0.05, abs(dm) > 1) %>%
+  write_csv(path="filtered_de_results.csv")
+```
+
+
+# Exercise for next time
+
+<div class="exercise">
+
+- Create a new RStudio project and write a markdown file to document the analysis of the GEO dataset `GSE33126`
+- Include the key stages of the analysis in your report
+  + downloading the data
+  + quality assessment
+  + log$_2$ transformation
+  + statistical testing
+  + export the results
+  
+</div>
