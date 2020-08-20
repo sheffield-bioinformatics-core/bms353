@@ -16,13 +16,14 @@ editor_options:
 
 ## Pre-material
 
-We will assume you have a
-basic familiarity with the R language and Rstudio and are reasonably confident in performing the following tasks
+We will assume you have a basic familiarity with the R language and Rstudio and are reasonably confident in performing the following tasks:-
 
 - Creating new RStudio projects and markdown files
 - Importing spreadsheets into R
 - Filtering, arranging and selecting with `dplyr`
 - Plotting using `ggplot2`
+
+You should also be familiar with the 
 
 ## Contact
 
@@ -34,41 +35,56 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Learning outcomes
 
+- Overview of the course
 - Recap how R and RStudio can facilitate reproducible research
 - Tour of resources available through Bioconductor 
 - Installation of packages required for the remainder of the course
 
 ## Materials
 
-- [index](week1/)
+- [html](week1.html)
 
-# Week 2 - Microarray case study
+# Week 2 - Introduction to analysis high-throughput biological data
+
+## Learning outcome
+
+- Defining the keys steps in the analysis of high-throughput biological data
+    + quality assessment
+    + normalisation
+    + differential expression
+- Outline basics of statistical testing
+- Demonstrate how familiar R functions can be applied to biolgical data
 
 ## Materials
 
-- [index](week2/)
+- [html](week2.nb.html)
+- [markdown](week2.Rmd)
 
 # Week 3 - Importing RNA-seq counts into R and quality assessment
 
 ## Materials
 
-- [index](week3/)
+- [html](week3.nb.html)
+- [markdown](week3.Rmd)
 
 # Week 4 - Differential Expression for RNA-seq
 
 ## Materials
 
-- [index](week4/)
+- [html](week4.nb.html)
+- [markdown](week4.Rmd)
 
 # Week 5 - Visualisation methods for RNA-seq data
 
 ## Materials
 
-- [index](week5/)
+- [html](week5.nb.html)
+- [markdown](week5.Rmd)
 
 # Week 6 - Pathways and further downstream analysis
 
 ## Materials
 
-- [index](week6/)
+- [html](week6.nb.html)
+- [markdown](week6.Rmd)
 
