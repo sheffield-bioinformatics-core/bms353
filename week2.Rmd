@@ -32,7 +32,7 @@ BiocManager::install("genefilter")
 
 # Importing the data
 
-The data from this experiment comprises nine paired tumor/normal colon tissues on Illumina HT12\_v3 gene expression Beadchips. We will assume that you already know the accession number (GSE....) for the dataset that you want to download.
+The data from this experiment comprises nine paired tumor/normal colon tissues on Illumina HT12\_v3 gene expression Beadchips. We will assume that you already know the accession number (GSE....) for the dataset that you want to download. This should usually be declared as part of the manuscript, and journals are becoming increasingly strict about making sure that data accompanying a publication are available through a suitable repository. The Gene Expression Omnibus (GEO) is one such resource for biological data.
 
 
 ```{r echo=FALSE,message=FALSE}
@@ -40,9 +40,13 @@ library(GEOquery)
 library(limma)
 ```
 
+<div class="information">
+These data were generated using Illumina microarrays, but the procedure should be highly similar for other manufacturers. e.g. Affymetrix.
+</div>
+
 The [landing page](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE33126) has a link to download the *series matrix*. We can download this within R if we wish using the function `download.file`.
 
-The `getGEO` function from `GEOquery` can then import these data into R.
+The `getGEO` function from `GEOquery` can then import these data into R. The data are a bit more complicated that the spreadsheets we have dealt with so far, so we have to use a specialised package rather than `read_csv` etc.
 
 ```{r cache=TRUE, message=FALSE}
 library(GEOquery)
@@ -65,6 +69,17 @@ gse
 
 ```
 
+The microarray technology employed has given us a gene expression measurement for each probe (/ gene) and biological sample. This is a data matrix with one row for each probe (/gene ) and one column for each sample. However, this is not sufficient information for the analysis. We also need to know
+
+- Which biological groups each sample belongs to, and any other relevant information.
+    + e.g. tumour/normal status, age, gender, batch
+- Which gene each probe is measuring
+    + what is the common name for the gene
+    + what are it's genomic coordinates
+    + what pathways does it belong to.
+    
+These different sources of data are all available in the `gse` object and are accessed using different functions.
+
 ```{r eval=FALSE}
 pData(gse) ## print the sample information
 fData(gse) ## print the gene annotation
@@ -74,7 +89,7 @@ exprs(gse) ## print the expression data
 
 # Quality Asssessment and Normalisation (if required)
 
-For visualisation and statistical analysis, we will inspect the data to discover what *scale* the data are presented in. The methods we will use assume the data are on a log$_2$ scale; typically in the range of 0 to 16. 
+For visualisation and statistical analysis, we will inspect the data to discover what *scale* the data are presented in and check if they have been normalised. Most methods will work better if the data are on a log$_2$ scale; typically in the range of 0 to 16. 
 
 The `exprs` function can retrieve the expression values as a data frame; with one column per-sample and one row per-gene.
 
@@ -85,12 +100,17 @@ The `summary` function can then be used to print the distributions.
 summary(exprs(gse))
 ```
 
-From this output we clearly see that the values go beyond 16, so we will need to perform a $log_2$ transformation. A `boxplot` can also be generated to see if the data have been normalised. If so, the distributions of each sample should be highly similar.
+From this output we clearly see that the values go beyond 16, so we will need to perform a $log_2$ transformation. We can save our normalised values as a new object so we can use them later. A `boxplot` can also be generated to see if the data have been normalised. Each "box" on the plot shows the distribution of gene expression measurements for a particular sample. If so, the distributions of each sample should be highly similar.
 
 ```{r}
 normData <- log2(exprs(gse))
 boxplot(normData,outline=FALSE)
 ```
+
+<div class="information">
+An easy to follow demonstration of the most-popular normalisation method (quantile normalisation) can be found here
+[https://youtu.be/ecjN6Xpv6SE](https://youtu.be/ecjN6Xpv6SE)
+</div>
 
 ## Inspect the clinical variables
 
@@ -123,7 +143,7 @@ sampleInfo
 
 Unsupervised analysis is a good way to get an understanding of the sources of variation in the data. It can also identify potential outlier samples.
 
-The function `cor` can calculate the correlation (on scale 0 - 1) in a pairwise fashion between all samples. This can be then visualised on a heatmap. Among the many options for creating heatmaps in R, the `pheatmap` library is one of the more popular ones. The only argument it requires is a matrix of numerical values (such as the correlation matrix).
+The function `cor` can calculate the correlation (on scale between -1 and 1) in a pairwise fashion between all samples. This can be then visualised on a heatmap. Among the many options for creating heatmaps in R, the `pheatmap` library is one of the more popular ones. The only argument it requires is a matrix of numerical values (such as the correlation matrix).
 
 ```{r}
 library(pheatmap)
@@ -147,7 +167,7 @@ pheatmap(corMatrix,
          annotation_col=sampleInfo)    
 ```
 
-Here we see that the main separation is due to normal vs tumours; as we hope.
+Here we see that the main separation is due to normal vs tumours; as we hope. Inspecting the correlation heatmap may reveal other issues in the data such as outlier samples and batch effects.
 
 Another approach to visualise the relationships between samples is Principal Components Analysis (PCA), which we will see later in the course.
 
@@ -182,18 +202,21 @@ https://bioconductor.org/packages/release/bioc/vignettes/limma/inst/doc/usersgui
 
 To illustrate the process of statistical testing, we will use a simple t-test, **which is not recommended in practice**.
 
-Visualising a single gene
+To motivate the problem we are trying to solve, we can look at the distribution of expression values for a single gene using a boxplot. We use the base R convention for subsettting a data frame; which is to use square brackets (`[]`) with a row and column index to indicate the rows and columns of data we want to retrieve. If the column index is omitted, it means show all columns. 
+
+The `~` notation is used to specify the sample groups we want to compare between. Although `ggplot` is recommended for publication quality graphics, it is sometimes easier to use the *base* equivalent.
 
 ```{r}
+fac <- as.factor(sampleInfo$group)
 boxplot(normData[1,]~fac)
 ```
-testing for one gene
+It would appear that the expression level is higher in normal samples compared to tumor. We can perform a statistical test to assess the difference. If the data can be assumed to be *normally-distributed* and *independent* then a two-sample t-test can be employed yielding a p-value and measure of the difference between the sample groups.
 
 ```{r}
 t.test(normData[1,]~fac,var.equal=TRUE)
 ```
 
-It would be tedious to test each gene individually. Fortunately the `genefilter` package includes a convenient `rowttests` function that will rapidly test each gene.
+It would be tedious to test each gene individually. Fortunately the `genefilter` package includes a convenient `rowttests` function that will rapidly test each gene. The output shows the test statistic, difference of means (dm) and p-value for each gene.
 
 
 ```{r}
@@ -202,7 +225,7 @@ fac <- as.factor(sampleInfo$group)
 test_results <- rowttests(normData, fac)
 head(test_results)
 ```
-
+However, you might notice from the output that the names of each probe doesn't have a column heading associated with it. We have to make a small change to the output so that `dplyr` functions can be used.
 
 ```{r}
 test_results <- tibble::rownames_to_column(test_results,"ID")
@@ -215,6 +238,13 @@ test_results <- tibble::rownames_to_column(test_results,"ID")
 padj <- p.adjust(test_results$p.value,method="BH")
 ```
 
+
+<div class="information">
+
+StatQuest video on multiple testing
+
+[https://youtu.be/K8LQSvtjcEo](https://youtu.be/K8LQSvtjcEo)
+</div>
 
 ### Exercise
 

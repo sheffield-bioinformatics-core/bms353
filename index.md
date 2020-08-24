@@ -23,7 +23,21 @@ We will assume you have a basic familiarity with the R language and Rstudio and 
 - Filtering, arranging and selecting with `dplyr`
 - Plotting using `ggplot2`
 
-You should also be familiar with the 
+You should also be familiar with the overall workflow of RNA-seq data.
+
+Sufficient preparation may be obtained by following [BMS397](https://sbc.shef.ac.uk/bms397)
+
+# Aims
+
+This module is aimed at biology students with little or no knowledge of programming and statistics. It has the following objectives:
+
+- making students aware of effects of experimental design in the subsequent data analysis;
+- having a good understanding of technologies and methods for Bioinformatics;
+- Introduce basic coding in R and exercise use of workflow and pipelines on real case study.
+
+BMS353 will use a multidisciplinary approach integrated with programming tools and cloud environment to introduce students to statistical concepts underpinning advanced data analysis and methods for high-throughput data analysis. Theoretical concepts and detailed examples will be introduced to provide the students with key steps to perform experimental design in data collection, data analysis and results validation. All the pipeline will be then used to analyse real case studies.
+
+The course will present state-of-the art research in computational biology with guest lecture and enable students to critically assess statistical methods and enhance innovative thinking in data analysis.
 
 ## Contact
 
@@ -44,15 +58,22 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 - [html](week1.html)
 
+## Additonal Materials
+
+- [A non reproducible workflow](https://youtu.be/s3JldKoA0zw) - 2 minutes
+- [Bioconductor introduction](https://youtu.be/dg6NvmMVQ3I) - 5 minutes
+- [A tour of the Bioconductor website](https://www.youtube.com/watch?v=HgbnSMiqlOg) - 5 minutes
+- [The importance of reproducibility in high-throughput Biology](https://youtu.be/7gYIs7uYbMo) - 37 minutes
+
 # Week 2 - Introduction to analysis high-throughput biological data
 
-## Learning outcome
+## Learning outcomes
 
 - Defining the keys steps in the analysis of high-throughput biological data
     + quality assessment
     + normalisation
     + differential expression
-- Outline basics of statistical testing
+- Outline the fundamentals of statistical testing for biological data
 - Demonstrate how familiar R functions can be applied to biolgical data
 
 ## Materials
@@ -60,14 +81,38 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 - [html](week2.nb.html)
 - [markdown](week2.Rmd)
 
+## Additional Materials
+
+- [Quantile Normalisation for high-throughput Biology](https://youtu.be/ecjN6Xpv6SE)
+- [Multiple Testing Correction](https://youtu.be/K8LQSvtjcEo)
+
+
 # Week 3 - Importing RNA-seq counts into R and quality assessment
+
+## Learning outcomes
+
+- Exploring count data and importing these data into R
+- Normalisation strategies for RNA-seq counts
+- Quality Assessment of counts
+- Identifying outliers, batch effects and sample mix-ups
 
 ## Materials
 
 - [html](week3.nb.html)
 - [markdown](week3.Rmd)
 
+## Additional Materials
+
+
+
 # Week 4 - Differential Expression for RNA-seq
+
+## Learning outcomes
+
+- Which statistical tests are appropriate for RNA-seq data
+- Using the DESeq2 package to detect differential expression
+- Using a venn diagram to compare gene lists
+- Using annotation databases to map between gene identifers
 
 ## Materials
 
@@ -76,12 +121,25 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 # Week 5 - Visualisation methods for RNA-seq data
 
+## Learning outcomes
+
+- Construction and interpretation of common visualisations
+    + scatter plots
+    + volcano plots
+    + MA-plots 
+    + heatmaps
+- Customisation of plots
+
 ## Materials
 
 - [html](week5.nb.html)
 - [markdown](week5.Rmd)
 
 # Week 6 - Pathways and further downstream analysis
+
+## Learning outcomes
+
+- Introduction to assessment
 
 ## Materials
 

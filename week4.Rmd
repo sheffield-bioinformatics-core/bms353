@@ -68,7 +68,7 @@ load("Robjects/preprocessing.Rdata")
 
 We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
-Typically we decide the design for the analysis when we create the DESeq2 objects, but it can be modified prior to the differential expression analysis
+Typically we decide the design for the analysis when we create the DESeq2 objects, but it can be modified prior to the differential expression analysis. The design tells `DESeq2` which sample groups to compare in the differential analysis. The name specified must correspond to a column in the sample information.
 
 ```{r}
 colData(dds)
@@ -77,7 +77,7 @@ design(dds) <- ~CellType
 
 
 
-The function runs a couple of processing steps automatically to adjust for different library size and gene-wise variabiliy, which you can read about in the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model).
+The function runs a couple of processing steps automatically to adjust for different library size and gene-wise variability, which you can read about in the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model).
 
 Firstly apply the median ratio normalisation method to compensate for differences in library sizes
 
@@ -233,6 +233,117 @@ results.mf <- results(de.mf,contrast=c("Status","lactation","virgin"))
 results.mf
 ```
 
+
+## Adding annotation to the DESeq2 results
+
+There are a number of ways to add annotation, but we will demonstrate how to do this using the *org.Mm.eg.db* package. This package is one of several *organism-level* packages which are re-built every 6 months. These packages are listed on the [annotation section](http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData) of the Bioconductor, and are installed in the same way as regular Bioconductor packages. An alternative approach is to use `biomaRt`, an interface to the [BioMart](http://www.biomart.org/) resource. BioMart is much more comprehensive, but the organism packages fit better into the Bioconductor workflow.
+
+
+```{r eval=FALSE}
+### Only execute when you need to install the package
+install.packages("BiocManager")
+BiocManager::install("org.Mm.eg.db")
+# For Human
+BiocManager::install("org.Hs.eg.db")
+```
+
+The packages are larger in size that Bioconductor software pacakges, but essentially they are databases that can be used to make *offline* queries. 
+
+```{r message=FALSE}
+library(org.Mm.eg.db)
+```
+
+
+First we need to decide what information we want. In order to see what we can extract we can run the `columns` function on the annotation database.
+
+```{r}
+columns(org.Mm.eg.db)
+```
+
+We are going to filter the database by a key or set of keys in order to extract the information we want. Valid names for the key can be retrieved with the `keytypes` function.
+
+```{r}
+keytypes(org.Mm.eg.db)
+```
+
+We should see `ENSEMBL`, which is the type of key we are going to use in this case. If we are unsure what values are acceptable for the key, we can check what keys are valid with `keys`
+
+```{r}
+keys(org.Mm.eg.db, keytype="ENSEMBL")[1:10]
+```
+
+
+
+For the top gene in our analysis the call to the function would be:-
+
+```{r eval=FALSE}
+select(org.Mm.eg.db, keys="ENSMUSG00000000381",
+       keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
+)
+
+```
+
+Unfortunately, the authors of `dplyr` and `AnnotationDbi` have both decided to use the name `select` in their packages. To avoid confusion, the following code is sometimes used:-
+
+```{r}
+AnnotationDbi::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME"))
+```
+
+
+To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information into a new data frame using the `select` function.
+
+```{r}
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
+              columns=c("SYMBOL","GENENAME"),
+              keytype="ENSEMBL")
+# Have a look at the annotation
+head(anno)
+
+```
+
+However, we have a problem that the resulting data frame has more rows than our results table. This is due to the *one-to-many* relationships that often occur when mapping between various identifiers.
+
+```{r}
+dim(anno)
+dim(results.ordered)
+```
+
+Such duplicated entries can be identified using the `duplicated` function. 
+
+```{r}
+dup_ids <- anno$ENSEMBL[duplicated(anno$ENSEMBL)]
+filter(anno, ENSEMBL %in% dup_ids) %>% 
+  arrange(ENSEMBL) %>% head
+
+```
+
+Fortunately, there are not too many so hopefully we won't lose too much information if we discard the entries that are duplicated. The first occurence of the duplicated ID will still be included in the table.
+
+```{r}
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
+              columns=c("ENSEMBL","SYMBOL","GENENAME","ENTREZID"),
+              keytype="ENSEMBL") %>% 
+  filter(!duplicated(ENSEMBL))
+dim(anno)
+```
+
+
+We can bind in the annotation information to the `results` data frame. 
+
+```{r}
+results.annotated <- left_join(results.ordered, anno,by="ENSEMBL")
+head(results.annotated)
+
+```
+
+
+We can save the results table using the `write.csv` function, which writes the results out to a csv file that you can open in excel.
+
+```{r}
+write.csv(results.annotated,file="virgin_vs_lactation_DESeq_annotated.csv",row.names=FALSE)
+```
+
+
 ### Exporting normalized counts
 
 The `DESeq` workflow applies *median of ratios normalization* that accounts for differences in sequencing depth between samples. The user does not usually need to run this step. However, if you want a matrix of counts for some application outside of Bioconductor the values can be extracted from the `dds` object.
@@ -246,7 +357,7 @@ write.csv(countMatrix,file="normalized_counts.csv")
 
 
 ```{r eval=FALSE}
-save(de.cellType,de.status,de.mf, file="Robjects/DE.Rdata")
+save(de.cellType,de.status,de.mf, results.annotated, file="Robjects/DE.Rdata")
 ```
 
 # Exercise for next time
@@ -266,7 +377,7 @@ Based on the course [RNAseq analysis in R](http://combine-australia.github.io/20
 
 This material has been created using the following resources:  
 
-- http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf [@Lun2016]  
+- http://www.statsci.org/smyth/pubs/QLedgeRPreprint.pdf 
 - http://monashbioinformaticsplatform.github.io/RNAseq-DE-analysis-with-R/99-RNAseq_DE_analysis_with_R.html  
 - http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html
 - https://bioconductor.github.io/BiocWorkshops/rna-seq-data-analysis-with-deseq2.html
