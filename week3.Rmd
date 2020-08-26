@@ -18,31 +18,47 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-# Overview
+# Learning objectives
 
-* Reading in table of counts
-* Quality control
-* Normalisation for composition bias
+- Exploring count data and importing these data into R
+- Normalisation strategies for RNA-seq counts
+- Quality Assessment of counts
+- Identifying outliers, batch effects and sample mix-ups
 
 
-## Introduction
+# Introduction
 
 Measuring gene expression on a genome-wide scale has become common practice over the last two decades or so, with microarrays predominantly used pre-2008. With the advent of next generation sequencing technology in 2008, an increasing number of scientists use this technology to measure and understand changes in gene expression in often complex systems. As sequencing costs have decreased, using RNA-Seq to simultaneously measure the expression of tens of thousands of genes for multiple samples has never been easier. The cost of these experiments has now moved from generating the data to storing and analysing it.
 
-There are many steps involved in analysing an RNA-Seq experiment. Analysing an RNAseq experiment begins with sequencing reads. Traditionally, these are aligned to a reference genome, then the number of reads mapped to each gene can be counted. More modern approaches such as `salmon` quantify transcripts directly and do not require genome aligment  to have taken place. Either approach results in a table of counts, which is what we perform statistical analyses on in R. While mapping and counting are important and necessary tasks, this session will be starting from the count data and getting stuck into analysis.
+There are many steps involved in analysing an RNA-Seq experiment. Analysing an RNAseq experiment begins with sequencing reads. Traditionally, these are aligned to a reference genome, then the number of reads mapped to each gene can be counted. More modern approaches such as `salmon` quantify transcripts directly and do not require genome alignment to have taken place. Either approach results in a table of counts, which is what we perform statistical analyses on in R. While mapping and counting are important and necessary tasks, this session will be starting from the count data and getting stuck into analysis.
 
 We will be following a workflow that uses the `DESeq2` package. An alternative and well-respected workflow is based on the [edgeR and limma packages](https://bioconductor.github.io/BiocWorkshops/rna-seq-analysis-is-easy-as-1-2-3-with-limma-glimma-and-edger.html).
 
 ### Mouse mammary gland dataset
 
-The data for this tutorial comes from a Nature Cell Biology paper, [*EGF-mediated induction of Mcl-1 at the switch to lactation is essential for alveolar cell survival*](http://www.ncbi.nlm.nih.gov/pubmed/25730472) [@Fu2015]. 
+The data for this tutorial comes from a Nature Cell Biology paper, [*EGF-mediated induction of Mcl-1 at the switch to lactation is essential for alveolar cell survival*](http://www.ncbi.nlm.nih.gov/pubmed/25730472). 
 
 This study examines the expression profiles of basal stem-cell enriched cells (B) and committed luminal cells (L) in the mammary gland of virgin, pregnant and lactating mice. Six groups are present, with one for each combination of cell type and mouse status. Each group contains two biological replicates.
 
-The sequencing reads for this experiment were uploaded to the [Sequencing Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra?term=SRP045534).
+The sequencing reads for this experiment were uploaded to the [Sequencing Read Archive (SRA)](https://www.ncbi.nlm.nih.gov/sra?term=SRP045534) and processed using `salmon`. However, the workflow we will describe can be applied to other sources of count data.
 
-## Obtaining the metadata
+# Obtaining the metadata
 
+We refer to *metadata* as the data that describes the biological and technical characteristics of the samples we have sequenced. Examples of variables recorded in the metadata might include.
+
+- tumour / normal status
+- cell line
+- age
+- gender
+- date of collection
+- litter
+
+We include the sample groups that we want to compare, and any potential *confounding factors* that we might need to address as part of our quality assessment. The metadata is stored in a spreadsheet and typically entered by-hand. When creating such data we should be mindful of some best-practice guidelines that will make our data easier to read into R.
+
+<div class="information">
+See here for a round-up of common errors when creating spreadsheets
+[Data Carpentry lesson on spreadsheet errors](https://datacarpentry.org/spreadsheet-ecology-lesson/02-common-mistakes/index.html)
+</div>
 
 The `sampleInfo.txt` in the `meta_data` folder contains basic information about the samples that we will need for the analysis today. This includes the ID for the sample from SRA, an ID assigned by the researcher, and the cell type and developmental stage for each sample.
 
@@ -58,15 +74,17 @@ rownames(sampleinfo) <- sampleinfo$run
 
 # Reading in the count data
 
+Eventually we will be using the DESeq2 Bioconductor package for differential expression analysis. The precise method of importing your count data into DESeq2 depends on the workflow used to generate the counts. The [DESeq2 vignette](https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#input-data) gives many different use-cases. For instance, if you have your counts in a single file (e.g. if following our Galaxy tutorials) you can follow [this example](https://bioconductor.org/packages/release/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#countmat)
+
 ### Overview
 
-We are going to use the [`tximport`](http://dx.doi.org/10.12688/f1000research.7563.1) package to import the count data into R and collapse the data to the *gene level*. This requires us to run a function in the following form:-
+We are going to use the [`tximport`](http://dx.doi.org/10.12688/f1000research.7563.1) package to import our count data into R and collapse the data to the *gene level*. This requires us to run a function in the following form:-
 
 ```{r eval=FALSE}
 txi <- tximport(files=..., type="salmon", tx2gene=...)
 ```
 
-So we will need to define the files that we want to import and a transcript mapping data frame. The transcript mapping takes the form 
+So we will need to define the files that we want to import and a transcript mapping data frame. The transcript mapping takes the form:-
 
 ```
  | TXNAME | GENEID
@@ -82,12 +100,9 @@ So we will need to define the files that we want to import and a transcript mapp
 
 ## Identifying the files
 
-The samples from this study have been *quantified* using `salmon`. For details on how this is done, please see the previous session on preparing fastq files for analysis.
+The samples from this study have been *quantified* using `salmon`, which is beyond the scope of this workshop. Note that the salmon analysis produced many other files (e.g. log files), but we will only need the `quant.sf.gz` files for analysis.
 
-The script we used to run salmon (`run_salmon.sh`) created a separate folder for each sample (named according to the SRA ID), and inside each of these folders we find the salmon quantification file. Note that the salmon analysis produced many other files (e.g. log files), but we will only need the `quant.sf.gz` files for analysis.
-
-
-The function we are going to use to import the salmon files requires a `vector` comprising the paths to the files that are to be imported. To construct such a vector we can use the following code chunk. Furthermore, we can name each item in the vector according to the directory name. These names will be used eventually to name the columns of our count matrices.
+The function we are going to use to import the salmon files requires a `vector` comprising the paths to the files that are to be imported. To construct such a vector we can use the following code chunk. We can name each item in the vector according to the directory name. These names will be used eventually to name the columns of our count matrices.
 
 ```{r}
 dirs <- list.files("salmon_quant/")
@@ -98,8 +113,7 @@ quant_files
 
 ### Inspecting the salmon output
 
-The quant files are simple tab-delimited files that tabulate the counting results for each transcript in our chosen organism. Although we will use a specialised Bioconductor package (`tximport`) to import the counts for entire dataset into R, we can inspect the first of the files using the standard `read_tsv` function from the `readr` package.
-
+The quant files are simple tab-delimited files that tabulate the counting results for each *transcript* in our chosen organism. Although we will use a specialised Bioconductor package (`tximport`) to import the counts for entire dataset into R, we can inspect the first of the files using the standard `read_tsv` function from the `readr` package.
 
 
 ```{r}
@@ -163,7 +177,7 @@ download.file(PASTE_LINK_FROM_ENSEMBL_HERE,destfile = gtf_file)
 
 ### Creating a transcript database
 
-The Bioconducor website provides many pre-built transcript databases for some organisms (Human, Mouse,Rat etc)  which provide transcript definitions and allow users to query the locations of particular genes, exons and other genomic features. You may find a pre-built package that already has the transcript locations required to create the transcript mapping file. Check out the annotation section of the Bioconductor website - http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData and look for packages starting `TxDb...`
+The Bioconducor website provides many pre-built transcript databases for some organisms (Human, Mouse, Rat etc)  which provide transcript definitions and allow users to query the locations of particular genes, exons and other genomic features. You may find a pre-built package that already has the transcript locations required to create the transcript mapping file. Check out the annotation section of the Bioconductor website - http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData and look for packages starting `TxDb...`
 
 However, it is quite easy to build such a database if we have a `gtf` file using the `GenomicFeatures` infrastructure.
 
@@ -232,22 +246,23 @@ all(rownames(sampleinfo) == colnames(txi$counts))
 
 # Quality control of the imported counts
 
-We will be using the `DESeq2` library to analyse this dataset. As part of the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html) you will see examples of importing count data from different sources. In all cases, [raw count data are expected](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts). 
+We will be using the `DESeq2` library to analyse this dataset. Along with the counts and metadata, a *design* for the experiment also needs to be specified. This will define how the differential expression analysis is carried out, but can be changed at a later stage so we will use `CellType` for now as our factor of interest.
 
-For this workflow we are going to import data from `tximport` with the `DESeqDataSetFromTximport` function along with the sample information that we created earlier. 
 
-A *design* for the experiment also needs to be specified. This will define how the differential expression analysis is carried out, but can be changed at a later stage so we will use `CellType` for now as our factor of interest.
+The object displays in a similar way to the microarray data we looked at in the previous section.
 
 ```{r message=FALSE}
 library(DESeq2)
 dds <- DESeqDataSetFromTximport(txi, 
                                 colData = sampleinfo,
                                 design <- ~CellType)
+dds
 ```
 
-The object contains all the metadata for the experiment, along with the counts. 
+The object contains all the counts along with the metadata for the experiment
 
 ```{r}
+head(assay(dds))
 colData(dds)
 ```
 
@@ -272,10 +287,6 @@ write.csv(fpkm, file="fpkm_values.csv",quote=FALSE)
 ### Visualising library sizes
 
 We can look at a few different plots to check that the data is good quality, and that the samples are as we would expect. First, we can check how many reads we have for each sample in the `DESeqDataSet`. The counts themselves are accessed using the `assay` function; giving a matrix of counts. The sum of a particular column is therefore the total number of reads for that sample.
-
-<div class="information">
-The `assay` function is similar to the `exprs` function that we used previously for GEO datasets.
-</div>
 
 ```{r}
 sum(assay(dds)[,1])
@@ -314,7 +325,7 @@ boxplot(log10(assay(dds)))
 
 
 
- We can use the `vst` or `rlog` function from `DESeq2`to compensate for the effect of different library sizes and put the data on the log$_2$ scale. The effect is to remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. For more details see the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#count-data-transformations)
+We can use the `vst` or `rlog` function from `DESeq2`to compensate for the effect of different library sizes and put the data on the log$_2$ scale. The effect is to remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. For more details see the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#count-data-transformations)
 
 
 
@@ -337,7 +348,7 @@ https://www.youtube.com/watch?v=0Jp4gsfOLMs
 </div>
 
 
-Related to the distance matrix heatmap is the [(Principal Components Analysis) PCA](http://setosa.io/ev/principal-component-analysis/) plot, which shows the samples in the 2D plane spanned by their first two principal components. A principle components analysis is an example of an unsupervised analysis, where we don’t need to specify the groups. If your experiment is well controlled and has worked well, what we hope to see is that the greatest sources of variation in the data are the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers
+Related to the distance matrix heatmap is the [(Principal Components Analysis) PCA](http://setosa.io/ev/principal-component-analysis/) plot, which shows the samples in the 2D plane spanned by their first two principal components. A principle components analysis is an example of an unsupervised analysis, where we don’t need to specify the groups. If your experiment is well-controlled and has worked well, what we hope to see is that the greatest sources of variation in the data are the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers.
 
 `DESeq2` has a convenient `plotPCA` function for making the PCA plot, which makes use of the `ggplot2` graphics package.
 
@@ -363,13 +374,14 @@ In our unsupervised analysis we should see that the main source of variation is 
 
 ### Correcting the sample information
 
-Hopefully we have spotted a potential sample swap in the dataset. The mislabelled samples are MCL1.DH, which is labelled as luminal but should be basal, and MCL1.LA, which is labelled as basal but should be luminal.  Such errors are not uncommon when handling large numbers of samples and sometimes we need to go back to the lab books and verify that a swap has been made. *If there is no supporting evidence for a swap then it can be safer to exclude the samples*. 
+Hopefully we have spotted a potential sample swap in the dataset. The mislabeled samples are MCL1.DH, which is labeled as luminal but should be basal, and MCL1.LA, which is labeled as basal but should be luminal.  Such errors are not uncommon when handling large numbers of samples and sometimes we need to go back to the lab books and verify that a swap has been made. *If there is no supporting evidence for a swap then it can be safer to exclude the samples*. 
 
-Furthermore, the person creating the sample sheet has been inconsistent about the way that values of `CellType` and `Status` have been entered into the metadata. Such errors can be annoying when labelling plots, but have more serious consequences when attempting to fit statistical models to the data.
+Furthermore, the person creating the sample sheet has been inconsistent about the way that values of `CellType` and `Status` have been entered into the metadata. Such errors can be annoying when labeling plots, but have more serious consequences when attempting to fit statistical models to the data.
 
 
 ```{r correctSampleSheet}
 library(stringr)
+library(dplyr)
 sampleinfo_corrected <- sampleinfo
 
 sampleinfo_corrected <- mutate(sampleinfo_corrected, CellType = str_to_lower(CellType))
@@ -386,7 +398,7 @@ write.table(sampleinfo_corrected, file="meta_data/sampleInfo_corrected.txt",sep=
 
 - Re-create the `DESeqDataset` object to include the corrected sample information
 - Re-run the plotPCA function on the new data and verify that the sample groups now look correct
-- Make a *heatmap* to show the correlations between samples
+- Make an R notebook to document your analysis
 </div>
 
 

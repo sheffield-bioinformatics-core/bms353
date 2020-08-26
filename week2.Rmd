@@ -139,37 +139,6 @@ Our sample information is therefore:-
 sampleInfo
 ```
 
-## Sample clustering
-
-Unsupervised analysis is a good way to get an understanding of the sources of variation in the data. It can also identify potential outlier samples.
-
-The function `cor` can calculate the correlation (on scale between -1 and 1) in a pairwise fashion between all samples. This can be then visualised on a heatmap. Among the many options for creating heatmaps in R, the `pheatmap` library is one of the more popular ones. The only argument it requires is a matrix of numerical values (such as the correlation matrix).
-
-```{r}
-library(pheatmap)
-## argument use="c" stops an error if there are any missing data points
-
-corMatrix <- cor(normData,use="c")
-pheatmap(corMatrix)                
-```
-
-We can incorporate sample information onto the plot to try and understand the clustering. We have already created such a data frame previously (`sampleInfo`). However, we need to take care that the rownames of these data match the columns of the correlation matrix.
-
-```{r}
-## Print the rownames of the sample information and check it matches the correlation matrix
-rownames(sampleInfo)
-colnames(corMatrix)
-
-## If not, force the rownames to match the columns
-
-rownames(sampleInfo) <- colnames(corMatrix)
-pheatmap(corMatrix,
-         annotation_col=sampleInfo)    
-```
-
-Here we see that the main separation is due to normal vs tumours; as we hope. Inspecting the correlation heatmap may reveal other issues in the data such as outlier samples and batch effects.
-
-Another approach to visualise the relationships between samples is Principal Components Analysis (PCA), which we will see later in the course.
 
 ## Exporting the data
 
@@ -233,10 +202,13 @@ test_results <- tibble::rownames_to_column(test_results,"ID")
 
 ## Multiple testing correction
 
-```{r}
-?p.adjust
-padj <- p.adjust(test_results$p.value,method="BH")
-```
+Unfortunately, generating the p-values is not the end of the story. Since genome-wide technologies permit us to interrogate many thousands of genes simultaneously, we are likely to obtain many *false-positive* findings. The concept of false positives is nicely summarised in this graphic:-
+
+![](https://raw.githubusercontent.com/sheffield-bioinformatics-core/IntroductionToStats/master/images/EffectSizeFAQs.PNG)
+
+[original source for picture](https://effectsizefaq.com/2010/05/31/i-always-get-confused-about-type-i-and-ii-errors-can-you-show-me-something-to-help-me-remember-the-difference/)
+
+Rather than reporting the *raw* p-values it is highly-recommended to adjust for the fact that we performed many thousands of tests. The most popular method is the Benjamini-Hochberg (BH) as described in the following video. 
 
 
 <div class="information">
@@ -246,11 +218,21 @@ StatQuest video on multiple testing
 [https://youtu.be/K8LQSvtjcEo](https://youtu.be/K8LQSvtjcEo)
 </div>
 
+The `p.adjust` function is a general-purpose function for adjusting p-values.
+
+```{r}
+?p.adjust
+```
+
+
+
+
 ### Exercise
 
 <div class="exercise">
 - How would you re-arrange the rows of`test_results` according to p-value? Which gene has the lowest p-value?
-- Add a new column `padj` to `test_results`. Consult the R introductory course or `dplyr` cheatsheet to recall how to add columns to a data frame.
+- Add a new column `padj` to `test_results`containing p-values adjusted with the BH method. Consult the R introductory course or `dplyr` cheatsheet to recall how to add columns to a data frame.
+    + How many genes have an *adjusted* p-value less than 0.05?
 </div>
 
 # Further processing and visualisation of DE results
@@ -340,3 +322,48 @@ filter(test_results, p.value < 0.05, abs(dm) > 1) %>%
   + export the results
   
 </div>
+
+# Disclaimer
+
+Remember that the t-test is not 
+
+[Microarray Analysis with limma](https://youtu.be/ZRet1oeGiUU)
+
+
+
+## Optional (Clustering)
+
+## Sample clustering
+
+Unsupervised analysis is a good way to get an understanding of the sources of variation in the data. It can also identify potential outlier samples.
+
+The function `cor` can calculate the correlation (on scale between -1 and 1) in a pairwise fashion between all samples. A pair of samples with correlation close to 1 is highly similar. The correlation values are then used in an *un-supervised* clustering
+
+
+Among the many options for creating heatmaps in R, the `pheatmap` library is one of the more popular ones. The only argument it requires is a matrix of numerical values (such as the correlation matrix).
+
+```{r}
+library(pheatmap)
+## argument use="c" stops an error if there are any missing data points
+
+corMatrix <- cor(normData,use="c")
+pheatmap(corMatrix)                
+```
+
+We can incorporate sample information onto the plot to try and understand the clustering. We have already created such a data frame previously (`sampleInfo`). However, we need to take care that the rownames of these data match the columns of the correlation matrix.
+
+```{r}
+## Print the rownames of the sample information and check it matches the correlation matrix
+rownames(sampleInfo)
+colnames(corMatrix)
+
+## If not, force the rownames to match the columns
+
+rownames(sampleInfo) <- colnames(corMatrix)
+pheatmap(corMatrix,
+         annotation_col=sampleInfo)    
+```
+
+Here we see that the main separation is due to normal vs tumours; as we hope. Inspecting the correlation heatmap may reveal other issues in the data such as outlier samples and batch effects.
+
+Another approach to visualise the relationships between samples is Principal Components Analysis (PCA), which we will see later in the course.

@@ -83,9 +83,9 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Additional Materials
 
+- [Gene Expression Analysis and DNA microarray Assays](https://youtu.be/Hv5flUOsE0s)
 - [Quantile Normalisation for high-throughput Biology](https://youtu.be/ecjN6Xpv6SE)
 - [Multiple Testing Correction](https://youtu.be/K8LQSvtjcEo)
-
 
 # Week 3 - Importing RNA-seq counts into R and quality assessment
 
@@ -103,7 +103,8 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Additional Materials
 
-
+- [Principal Components Analysis](https://www.youtube.com/watch?v=0Jp4gsfOLMs)
+- [RNA-seq count normalisation explained](https://youtu.be/TTUrtCY2k-w)
 
 # Week 4 - Differential Expression for RNA-seq
 
