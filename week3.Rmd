@@ -30,7 +30,15 @@ knitr::opts_chunk$set(echo = TRUE)
 
 Measuring gene expression on a genome-wide scale has become common practice over the last two decades or so, with microarrays predominantly used pre-2008. With the advent of next generation sequencing technology in 2008, an increasing number of scientists use this technology to measure and understand changes in gene expression in often complex systems. As sequencing costs have decreased, using RNA-Seq to simultaneously measure the expression of tens of thousands of genes for multiple samples has never been easier. The cost of these experiments has now moved from generating the data to storing and analysing it.
 
-There are many steps involved in analysing an RNA-Seq experiment. Analysing an RNAseq experiment begins with sequencing reads. Traditionally, these are aligned to a reference genome, then the number of reads mapped to each gene can be counted. More modern approaches such as `salmon` quantify transcripts directly and do not require genome alignment to have taken place. Either approach results in a table of counts, which is what we perform statistical analyses on in R. While mapping and counting are important and necessary tasks, this session will be starting from the count data and getting stuck into analysis.
+There are many steps involved in analysing an RNA-Seq experiment. Analysing an RNAseq experiment begins with sequencing reads. Traditionally, these are aligned to a reference genome, then the number of reads mapped to each gene can be counted. More modern approaches such as `salmon` quantify transcripts directly and do not require genome alignment to have taken place. Either approach results in a table of counts, which is what we perform statistical analyses on in R. While mapping and counting are important and necessary tasks, they are typically performed in languages other than R and so outside the scope of this course.
+
+<div class="information">
+If you want to know more about genome alignment and command-line tools, feel free to check out our workshop on this topic in your own time
+
+[https://sbc.shef.ac.uk/training/command-line-2020-02-12/](https://sbc.shef.ac.uk/training/command-line-2020-02-12/)
+</div>
+
+In these sessions will be starting from the count data and getting straight into the analysis.
 
 We will be following a workflow that uses the `DESeq2` package. An alternative and well-respected workflow is based on the [edgeR and limma packages](https://bioconductor.github.io/BiocWorkshops/rna-seq-analysis-is-easy-as-1-2-3-with-limma-glimma-and-edger.html).
 
@@ -56,7 +64,7 @@ We refer to *metadata* as the data that describes the biological and technical c
 We include the sample groups that we want to compare, and any potential *confounding factors* that we might need to address as part of our quality assessment. The metadata is stored in a spreadsheet and typically entered by-hand. When creating such data we should be mindful of some best-practice guidelines that will make our data easier to read into R.
 
 <div class="information">
-See here for a round-up of common errors when creating spreadsheets
+See here for a round-up of common errors to be avoiding when creating spreadsheets
 [Data Carpentry lesson on spreadsheet errors](https://datacarpentry.org/spreadsheet-ecology-lesson/02-common-mistakes/index.html)
 </div>
 
@@ -66,8 +74,8 @@ The `sampleInfo.txt` in the `meta_data` folder contains basic information about 
 # Read the sample information into R
 sampleinfo <- read.delim("meta_data/sampleInfo.txt")
 View(sampleinfo)
-sampleinfo
 rownames(sampleinfo) <- sampleinfo$run
+sampleinfo
 ```
 
 
@@ -120,7 +128,6 @@ The quant files are simple tab-delimited files that tabulate the counting result
 library(readr)
 quants <- read_tsv(quant_files[1])
 head(quants)
-
 ```
 
 
@@ -229,11 +236,13 @@ tx2gene <- tx_map
 txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene,ignoreTxVersion = TRUE)
 ```
 
-The resulting object is a simple `list` structure in R which contains a number of components that we can access using a `$` operator
+The resulting object is a "*list*" structure in R which contains a number of components that we can access using a `$` operator
 
 ```{r}
 names(txi)
 ```
+
+The raw counts can be found using `txi$counts`
 
 ```{r}
 head(txi$counts)
@@ -246,7 +255,7 @@ all(rownames(sampleinfo) == colnames(txi$counts))
 
 # Quality control of the imported counts
 
-We will be using the `DESeq2` library to analyse this dataset. Along with the counts and metadata, a *design* for the experiment also needs to be specified. This will define how the differential expression analysis is carried out, but can be changed at a later stage so we will use `CellType` for now as our factor of interest.
+We will be using the `DESeq2` library to analyse this dataset. Along with the counts and metadata, a *design* for the experiment also needs to be specified. This will define how the differential expression analysis is carried out, but can be changed at a later stage so for now we will use `CellType` as our factor of interest.
 
 
 The object displays in a similar way to the microarray data we looked at in the previous section.
@@ -319,11 +328,6 @@ We typically use a `boxplot` to visualise difference the distributions of the co
 boxplot(assay(dds))
 ```
 
-```{r message=FALSE}
-boxplot(log10(assay(dds)))
-```
-
-
 
 We can use the `vst` or `rlog` function from `DESeq2`to compensate for the effect of different library sizes and put the data on the log$_2$ scale. The effect is to remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. For more details see the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#count-data-transformations)
 
@@ -348,7 +352,7 @@ https://www.youtube.com/watch?v=0Jp4gsfOLMs
 </div>
 
 
-Related to the distance matrix heatmap is the [(Principal Components Analysis) PCA](http://setosa.io/ev/principal-component-analysis/) plot, which shows the samples in the 2D plane spanned by their first two principal components. A principle components analysis is an example of an unsupervised analysis, where we don’t need to specify the groups. If your experiment is well-controlled and has worked well, what we hope to see is that the greatest sources of variation in the data are the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers.
+Related to the distance matrix heatmap is the [(Principal Components Analysis) PCA](http://setosa.io/ev/principal-component-analysis/) plot, which shows the samples in the 2D plane spanned by their first two principal components. A principle components analysis is an example of an unsupervised analysis, where we don’t need to specify the groups. If your experiment is well-controlled and has worked well, what we hope to see is that the greatest sources of variation in the data correspond to the treatments/groups we are interested in. It is also an incredibly useful tool for quality control and checking for outliers.
 
 `DESeq2` has a convenient `plotPCA` function for making the PCA plot, which makes use of the `ggplot2` graphics package.
 

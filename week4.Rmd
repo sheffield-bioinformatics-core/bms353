@@ -16,7 +16,11 @@ knitr::opts_chunk$set(echo = TRUE)
 
 
 
-# Introduction
+# Learning Objectives
+
+- Which statistical tests are appropriate for RNA-seq data
+- Using the DESeq2 package to detect differential expression
+- Using a venn diagram to compare gene lists
 
 # Differential expression with `DESeq2`
 
@@ -24,7 +28,9 @@ Now that we are happy that we have normalised the data and that the quality look
 
 First make sure we have all the objects and libraries loaded.
 
-```{r}
+
+
+```{r warning=FALSE,message=FALSE}
 library(DESeq2)
 library(tximport)
 ```
@@ -62,10 +68,6 @@ We also have the output of the pre-processing section saved as an R object if yo
 load("Robjects/preprocessing.Rdata")
 ```
 
-
-
-## Differential Expression with DESeq2
-
 We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
 Typically we decide the design for the analysis when we create the DESeq2 objects, but it can be modified prior to the differential expression analysis. The design tells `DESeq2` which sample groups to compare in the differential analysis. The name specified must correspond to a column in the sample information.
@@ -101,7 +103,7 @@ dds <- nbinomWaldTest(dds)
 Fortunately, there is one convenient function that will apply the three steps
 
 ```{r}
-de.cellType <- DESeq(dds)
+de_cellType <- DESeq(dds)
 
 ```
 
@@ -110,7 +112,7 @@ de.cellType <- DESeq(dds)
 The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studied) and each column reports some aspect of the differential expression analysis for that gene. Note that **all genes** are reported. At this stage the gene identifiers are not very informative, something we will fix in the next section. 
 
 ```{r}
-results(de.cellType)
+results(de_cellType)
 ```
 
 The output can be converted into a data frame and manipulated in the usual manner. It is recommended to use `dplyr` to manipulate the data frames with the standard set of operations detailed on the [dplyr cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
@@ -124,35 +126,45 @@ However, `dpylr` does not like data frame that have rownames. We can use the `ro
 
 The `%>%` symbol refers to the [piping operation](https://sbc.shef.ac.uk/r-online/part2.nb.html#%E2%80%9CPiping%E2%80%9D) in R, which is a way of chaining operations together. 
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 library(dplyr)
 library(tibble)
-results.cellType <- as.data.frame(results(de.cellType)) %>% 
-  rownames_to_column("GeneID")  
+results_cellType <- results(de_cellType) %>%
+  as.data.frame %>% 
+  rownames_to_column("ENSEMBL")  
 
-results.cellType
+results_cellType
 ```
 
 We can sort the rows by adjusted p-value and then print the first 10 rows.
 
 ```{r}
-arrange(results.cellType, padj) %>%  
+arrange(results_cellType, padj) %>%  
   head(n=10)
 ```
 
 Or we can sort the rows and then write the resulting data frame to a file.
 
 ```{r}
-arrange(results.cellType, padj) %>%
+arrange(results_cellType, padj) %>%
   write.csv("basal_vs_luminal_DESeq_all.csv")
 ```
 
+Filtering to the differentially-expressed genes can be achieved using the `filter` function from `dplyr`.
 
 ```{r}
-arrange(results.cellType, padj) %>%
+arrange(results_cellType, padj) %>%
   filter(padj < 0.05) %>% 
   write.csv("basal_vs_luminal_DESeq_DE.csv")
 ```
+
+It is also a good idea to save the results object itself so we can re-use later.
+
+```{r}
+saveRDS(results_cellType, file="Robjects/results_cellType.rds")
+saveRDS(dds, file="Robjects/dds.rds")
+```
+
 
 ### Exercise
 
@@ -162,8 +174,8 @@ arrange(results.cellType, padj) %>%
 - HINT: So that we don't overwrite our results so far, it may be convenient to create a new `DESeqDataSet` object for the new differential expression analysis.
 
 ```{r eval=FALSE}
-dds.status <- dds
-design(dds.status) <- ......
+dds_status <- dds
+design(dds_status) <- ......
 ```
 
 </div>
@@ -171,16 +183,16 @@ design(dds.status) <- ......
 
 
 
-### Changing the direction of the contrast
+## Changing the direction of the contrast
 
-In this initial analyis `DESeq2` has automatically decided which member of our sample groups to use as our baseline (`basal` in this case) so that the log2 fold changes are reported with a positve value meaning higher expression in `luminal`. If we want to change this behaviour we can change the `contrast` argument in the `results` function
+In this initial analysis `DESeq2` has automatically decided which member of our sample groups to use as our baseline (`basal` in this case) so that the log2 fold changes are reported with a positive value meaning higher expression in `luminal`. If we want to change this behaviour we can change the `contrast` argument in the `results` function
 
 
 ```{r eval=FALSE}
 ## This should give the same as the table above
-results(de.cellType, contrast=c("CellType","luminal","basal"))
+results(de_cellType, contrast=c("CellType","luminal","basal"))
 ## Changing the direction of the contrast
-results(de.cellType, contrast=c("CellType","basal","luminal"))
+results(de_cellType, contrast=c("CellType","basal","luminal"))
 
 ```
 
@@ -188,21 +200,21 @@ If we change to performing differential expression analysis on the `Status` vari
 
 
 ```{r}
-dds.status <- dds
-design(dds.status) <- ~Status
-de.status <- DESeq(dds.status)
-resultsNames(de.status)
-results.status <- data.frame(results(de.status))
+dds_status <- dds
+design(dds_status) <- ~Status
+de_status <- DESeq(dds_status)
+resultsNames(de_status)
+results_status <- data.frame(results(de_status))
 ```
 
-### Intersecting gene lists
+# Intersecting gene lists
 
 A venn diagram is a common way of visualising the overlap between two genelists. We need to create a data frame where each column indicates whether each gene is differentially expressed in a particular contrast or not. To create such columns we can do a logical test on the adjusted p-values from our results tables.
 
 
 ```{r message=FALSE}
-venn_data <- data.frame(CellType = results.cellType$padj<0.05,
-                        Status = results.status$padj < 0.05)
+venn_data <- data.frame(CellType = results_cellType$padj<0.05,
+                        Status = results_status$padj < 0.05)
 library(limma)
 vennDiagram(venn_data)
 ```
@@ -217,131 +229,46 @@ vennDiagram(venn_data)
 
 </div>
 
-### Fitting alternative models to the data
+## Analysing a subset of the data
+
+```{r}
+dds_basal <- dds[,which(dds$CellType == "basal")]
+design(dds_basal) <- ~Status
+de_basal <- DESeq(dds_basal)
+```
+```{r}
+dds_luminal <- dds[,which(dds$CellType == "luminal")]
+design(dds_luminal) <- ~Status
+de_luminal <- DESeq(dds_luminal)
+```
+```{r}
+venn_data <- data.frame(Basal = results(de_basal)$padj < 0.05, Luminal  = results(de_luminal)$padj<0.05)
+
+limma::vennDiagram(venn_data)
+
+```
+
+
+# Fitting alternative models to the data
 
 `DESEq2` allows for more complicated models to be fit to the data. For guidance on how to fit more complicated models you can consult the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html), the [limma user guide](https://www.bioconductor.org/packages/devel/bioc/vignettes/limma/inst/doc/usersguide.pdf) or the Bioconductor mailing list. 
 
 In particular, DESeq2 allows [multi-factor models](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#multi-factor-designs) which can account for other sources of variation in the data such as batches or gender.
 
-Lets suppose that we wanted the different between virgin and lactatin individuals, but controlling for `CellType`. The main assumption being that the effect of `Status` is the same regardless of `CellType` The design for such an analysis would be:-
+Lets suppose that we wanted the different between virgin and lactating individuals, but controlling for `CellType`. The main assumption being that the effect of `Status` is the same regardless of `CellType` The design for such an analysis would be:-
 
 ```{r}
-dds.mf <- dds
-design(dds.mf) <- ~CellType+Status
-de.mf <- DESeq(dds.mf)
-results.mf <- results(de.mf,contrast=c("Status","lactation","virgin"))
-results.mf
+dds_mf <- dds
+design(dds_mf) <- ~CellType+Status
+de_mf <- DESeq(dds_mf)
+results_mf <- results(de_mf,contrast=c("Status","virgin","lactation"
+                                       ))
+results_mf
 ```
 
 
-## Adding annotation to the DESeq2 results
+### Saving the results
 
-There are a number of ways to add annotation, but we will demonstrate how to do this using the *org.Mm.eg.db* package. This package is one of several *organism-level* packages which are re-built every 6 months. These packages are listed on the [annotation section](http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData) of the Bioconductor, and are installed in the same way as regular Bioconductor packages. An alternative approach is to use `biomaRt`, an interface to the [BioMart](http://www.biomart.org/) resource. BioMart is much more comprehensive, but the organism packages fit better into the Bioconductor workflow.
-
-
-```{r eval=FALSE}
-### Only execute when you need to install the package
-install.packages("BiocManager")
-BiocManager::install("org.Mm.eg.db")
-# For Human
-BiocManager::install("org.Hs.eg.db")
-```
-
-The packages are larger in size that Bioconductor software pacakges, but essentially they are databases that can be used to make *offline* queries. 
-
-```{r message=FALSE}
-library(org.Mm.eg.db)
-```
-
-
-First we need to decide what information we want. In order to see what we can extract we can run the `columns` function on the annotation database.
-
-```{r}
-columns(org.Mm.eg.db)
-```
-
-We are going to filter the database by a key or set of keys in order to extract the information we want. Valid names for the key can be retrieved with the `keytypes` function.
-
-```{r}
-keytypes(org.Mm.eg.db)
-```
-
-We should see `ENSEMBL`, which is the type of key we are going to use in this case. If we are unsure what values are acceptable for the key, we can check what keys are valid with `keys`
-
-```{r}
-keys(org.Mm.eg.db, keytype="ENSEMBL")[1:10]
-```
-
-
-
-For the top gene in our analysis the call to the function would be:-
-
-```{r eval=FALSE}
-select(org.Mm.eg.db, keys="ENSMUSG00000000381",
-       keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
-)
-
-```
-
-Unfortunately, the authors of `dplyr` and `AnnotationDbi` have both decided to use the name `select` in their packages. To avoid confusion, the following code is sometimes used:-
-
-```{r}
-AnnotationDbi::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME"))
-```
-
-
-To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information into a new data frame using the `select` function.
-
-```{r}
-anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
-              columns=c("SYMBOL","GENENAME"),
-              keytype="ENSEMBL")
-# Have a look at the annotation
-head(anno)
-
-```
-
-However, we have a problem that the resulting data frame has more rows than our results table. This is due to the *one-to-many* relationships that often occur when mapping between various identifiers.
-
-```{r}
-dim(anno)
-dim(results.ordered)
-```
-
-Such duplicated entries can be identified using the `duplicated` function. 
-
-```{r}
-dup_ids <- anno$ENSEMBL[duplicated(anno$ENSEMBL)]
-filter(anno, ENSEMBL %in% dup_ids) %>% 
-  arrange(ENSEMBL) %>% head
-
-```
-
-Fortunately, there are not too many so hopefully we won't lose too much information if we discard the entries that are duplicated. The first occurence of the duplicated ID will still be included in the table.
-
-```{r}
-anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results.ordered$ENSEMBL,
-              columns=c("ENSEMBL","SYMBOL","GENENAME","ENTREZID"),
-              keytype="ENSEMBL") %>% 
-  filter(!duplicated(ENSEMBL))
-dim(anno)
-```
-
-
-We can bind in the annotation information to the `results` data frame. 
-
-```{r}
-results.annotated <- left_join(results.ordered, anno,by="ENSEMBL")
-head(results.annotated)
-
-```
-
-
-We can save the results table using the `write.csv` function, which writes the results out to a csv file that you can open in excel.
-
-```{r}
-write.csv(results.annotated,file="virgin_vs_lactation_DESeq_annotated.csv",row.names=FALSE)
-```
 
 
 ### Exporting normalized counts
@@ -356,15 +283,13 @@ write.csv(countMatrix,file="normalized_counts.csv")
 ```
 
 
-```{r eval=FALSE}
-save(de.cellType,de.status,de.mf, results.annotated, file="Robjects/DE.Rdata")
-```
 
 # Exercise for next time
 
 <div class="exercise">
 
 - Add a differential expression section to your report
+- How many differentially expressed genes are found with adjusted p-value less than 0.05 and absolute log fold-change > 1 in the *multi-factor* analysis? How does this compare to the number of genes detected in the workshop exercise?
 
 </div>
 

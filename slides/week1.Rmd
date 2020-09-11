@@ -1,0 +1,94 @@
+---
+title: "BMS353 - Week 1"
+author: "Mark Dunning"
+date: "November 2020"
+output: 
+  ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Welcome and About me
+
+![](../images/md.png)
+
+- Dr. Mark Dunning - Module Coordinator
+  + sbc.shef.ac.uk/team/mark
+- Bsc and Msc; Maths and Computer Science - York
+- PhD Bioinformatics; - Cambridge
+- Bioinformatics Core Analyst and Trainer;  Cancer Research Uk
+- Bioinformatics Core Lead;  Sheffield
+
+## Course Materials
+
+- Course Website
+  + https://sbc.shef.ac.uk/bms353
+- Video recordings via blackboard
+- Pre-materials each week
+
+
+## Teaching format
+
+- Short intro lecture and pre-material videos
+- Live online sessions with module coordinator and demonstrators
+  + working through RStudio code and solving problems
+  + small breakout groups with demonstrators to answer questions
+- Solutions available to check your work
+- Assignment at the end
+  + analysis of a real-life dataset
+  
+## Course Aims
+
+- *make students aware of effects of experimental design*
+- *good understanding of technologies and methods for Bioinformatics*
+- *introduce basic coding in R*
+
+## Course Aims - specifics
+
+- walk through RNA-seq workflow in R
+  + quality assessment
+  + differential expression
+  + visualisation
+  + downstream analysis
+- by the end you should have a reproducible report for the above analysis
+
+## Course Aims - high-level
+
+- Creating reproducible reports
+  + not just showing the answer - but how you got to it
+- Getting stuck, and figuring out how to solve errors
+- interpreting and questioning data
+
+## Prior knowledge
+
+- Rstudio and the tidyverse packages
+  + dplyr
+  + ggplot2
+- RNA-seq workflow
+  + in Galaxy
+  
+## Why R?
+
+- Reputation
+- Interactivity
+- Flexibility
+- Support
+- **Reproducibility**
+
+## Week 1
+
+- Recap on RStudio and how to make reproducible reports
+- Introduce the resources available through Bioconductor
+- Setup software and data for the rest of the course
+
+## Other viewing
+
+- [A non reproducible workflow](https://youtu.be/s3JldKoA0zw) - 2 minutes
+- [Bioconductor introduction](https://youtu.be/dg6NvmMVQ3I) - 5 minutes
+- [A tour of the Bioconductor website](https://www.youtube.com/watch?v=HgbnSMiqlOg) - 5 minutes
+- [The importance of reproducibility in high-throughput Biology](https://youtu.be/7gYIs7uYbMo) - 37 minutes
+
+
+

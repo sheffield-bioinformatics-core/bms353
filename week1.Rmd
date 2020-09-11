@@ -1,5 +1,5 @@
 ---
-title: "BMs353 Bioinformatics for Biomedical Science - Week 1"
+title: "BMS353 Bioinformatics for Biomedical Science - Week 1"
 author: "Module Coordinator Mark Dunning"
 output: 
   html_document: 
@@ -171,7 +171,6 @@ The documentation standards are also higher than other R repositories. Each pack
 <div class="exercise">
 Install the following set of packages that are available through Bioconductor.
 
-- `DESeq2`, `pheatmap`, `org.Mm.eg.db`. `genefilter`
-
-(some exercise about markdown?)
+- `DESeq2`, `pheatmap`, `org.Mm.eg.db`. `genefilter`, `GEOquery`, `GenomicFeatures`, `tximport`, `limma`, `biomaRt`, `clusterProfiler`, `pathview`, `fgsea`, 
+- Download the dataset required for the course from [this link](bms353.zip). Un-zip the file and create an RStudio project corresponding to the extracted data.
 </div>

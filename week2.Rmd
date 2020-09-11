@@ -9,7 +9,9 @@ output:
 editor_options: 
   chunk_output_type: inline
 ---
-
+```{r setup, include=FALSE, message=FALSE,warning=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
 <img src="images/logo-sm.png" style="position:absolute;top:40px;right:10px;" width="200" />
 
 
@@ -100,7 +102,7 @@ The `summary` function can then be used to print the distributions.
 summary(exprs(gse))
 ```
 
-From this output we clearly see that the values go beyond 16, so we will need to perform a $log_2$ transformation. We can save our normalised values as a new object so we can use them later. A `boxplot` can also be generated to see if the data have been normalised. Each "box" on the plot shows the distribution of gene expression measurements for a particular sample. If so, the distributions of each sample should be highly similar.
+From this output we clearly see that the values go beyond 16, so we will need to perform a log$_2$ transformation. We can save our normalised values as a new object so we can use them later. A `boxplot` can also be generated to see if the data have been normalised. Each "box" on the plot shows the distribution of gene expression measurements for a particular sample. If so, the distributions of each sample should be highly similar.
 
 ```{r}
 normData <- log2(exprs(gse))
@@ -218,13 +220,20 @@ StatQuest video on multiple testing
 [https://youtu.be/K8LQSvtjcEo](https://youtu.be/K8LQSvtjcEo)
 </div>
 
-The `p.adjust` function is a general-purpose function for adjusting p-values.
+```{r}
+sum(test_results$p.value < 0.05)
+nrow(test_results)*0.05 
+```
+
+Now, assume for a moment that the null hypothesis is true for all genes, i.e., no gene is affected by the treatment with DPN. Then, by the definition of p value, we expect up to 5% of the genes to have a p
+value below 0.05. This amounts to 2440 genes. If we just considered the list of genes with a p value below 0.05 as differentially expressed, this list should therefore be expected to contain up to 2440/8158 = 30%
+false positives
+
+The `p.adjust` function is a general-purpose function for adjusting p-values.  The Benjamini-Hochberg method calculates for each gene an adjusted p value which answers the following question: if one called significant all genes with a p value less than or equal to this gene’s p value threshold, what would be the fraction of false positives (the false discovery rate, FDR) among them (in the sense of the calculation outlined above)?
 
 ```{r}
 ?p.adjust
 ```
-
-
 
 
 ### Exercise
@@ -325,10 +334,14 @@ filter(test_results, p.value < 0.05, abs(dm) > 1) %>%
 
 # Disclaimer
 
-Remember that the t-test is not 
+<div class="warning">
+
+Remember that the t-test i
+s not recommended in practice for the analysis of microarray data. For alternative methods, see the limma user guide or watch this video
 
 [Microarray Analysis with limma](https://youtu.be/ZRet1oeGiUU)
 
+</div>
 
 
 ## Optional (Clustering)
