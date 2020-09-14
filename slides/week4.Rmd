@@ -2,7 +2,7 @@
 title: "BMS353 Week 4"
 author: "Mark Dunning"
 date: "November 2020"
-output: html_document
+output: ioslides_presentation
 ---
 
 ```{r setup, include=FALSE}
@@ -49,6 +49,7 @@ ggthemr(uos)
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(DESeq2))
+dds <- makeExampleDESeqDataSet()
 ```
 
 ## Week 3 recap
@@ -59,40 +60,59 @@ suppressPackageStartupMessages(library(DESeq2))
 
 ## Week 4 overview
 
+- use `DESeq2` to assess differential expression between groups of interest
+
+
 ## Data Transformation
 
 - previously we transformed the data so we could visualise
-- some 
+- there are a further set of considerations to take into account for differential expression
+- we obtain raw counts for each gene, but these are relative counts
+- the relationship between counts and RNA-expression is not the same for all genes across all samples
 
-## Data Transformation and normalisation
+## Depth
 
 ![](seq_depth.PNG)
 
-(image from Harvard Chan Bioinformatics Core - https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html)
+Differing sequencing depth
+(image from Harvard Chan Bioinformatics Core)
 
-## Data Transformation and normalisation
+## Gene Length
 
 ![](gene_length.PNG)
 
+Longer genes likely to be sequenced more
 (image from Harvard Chan Bioinformatics Core)
 
-## Data Transformation and normalisation
+## Library composition
 
 ![](lib_size.PNG)
 
-(image from Harvard Chan Bioinformatics Core - https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html)
+Highly-expressed genes overrepresented at the cost of lowly expressed genes
+(image from Harvard Chan Bioinformatics Core)
+
+## "Median Ratio" Normalisation
+
+- create a "reference" sample that comprises the average counts for each gene
+- for a given sample, divide each gene by the average counts
+  + then for each sample take the median of these values
+  + this is the *scale-factor*
+
+## Statistical testing
+
+- count-based data are not observed to be normally-distributed
+- using a t-test as we did for microarrays would not be appropriate
+- instead we use something called the *negative-binomial*
+- this means we have to estimate the *dispersion* for each gene
 
 ## The DESeq pipeline
 
-- DESeq2 provides a one-step method to carry out the required normalised and detect differential expression
-  + `DESeq`
+- DESeq2 provides a one-step method to carry out the required normalised and apply statistical tests
+  + `DESeq(dds)`
   + we can run the steps manually if we wish..
+- notice that the *raw counts* are used (not the input to PCA)
 - the comparisons performed are determined by the `design`
 
-```{r echo=FALSE,message=FALSE,warning=FALSE}
-de <- DESeq(dds)
-de
-```
 
 
 ## Design specification
@@ -101,7 +121,7 @@ de
 - for simple cases `~condition` means compare conditions in our dataset
   + `condition` has to be a column in our *meta data*
 
-```{r echo=FALSE,message=FALSE,warning=FALSE}
+```{r ,include=TRUE,message=FALSE,warning=FALSE}
 design(dds)
 colData(dds)
 ```
@@ -109,11 +129,33 @@ colData(dds)
 
 ## Printing results
 
-- results are in a familiar format
+- results are in a familiar format; one row for each gene
 - adjusted p-values are automatically calculated
-- can 
+- can use familiar `dplyr` functions to manipulate
+  + `filter`, `arrange` etc
+- pay attention to the contrast that is calculated at the *baseline*
 
-```{r}
-results(de)[1:5,]
+```{r message=FALSE,warning=FALSE}
+de <- DESeq(dds)
+results(de)[1:3,]
 ```
 
+## Column meanings
+
+- `baseMean`; average count for the gene
+- `log2FoldChange`; expression difference between sample groups on log$_2$ scale. i.e. 1 = 2$^1$ = 2, 1.5 = 2$^{1.5}$  $~$2.82
+- (`lfcSE`; variability of the log fold change estimate)
+- (`stat`; the test statistic)
+- `pvalue`; the p-value - probability of obtaining the observed log fold-change due to chance alone
+- `padj`; the p-value after multiple testing adjustment (BH)
+
+## Other considerations
+
+- can apply differential expression to a subset of the data
+- can adjust the model to account for batch effects and other confounding factors
+  + `~ batch + condition`
+  
+## Further Viewing
+
+- [Differential expression analysis](https://youtu.be/5tGCBW3_0IA) - 26 minutes
+- https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html
