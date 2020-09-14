@@ -91,19 +91,27 @@ Longer genes likely to be sequenced more
 Highly-expressed genes overrepresented at the cost of lowly expressed genes
 (image from Harvard Chan Bioinformatics Core)
 
+## Statistical testing
+
+- the count for a given gene is influenced by many technical factors
+- overall goal is to see assess whether a gene varies more between groups (biological variation) than it does within a group (technical / uninteresting)
+- for microarrays we used a t-test as our basis - as we could assume a *normal* distribution
+
+## Statistical testing
+
+- using a t-test as we did for microarrays would not be appropriate
+- instead we use something called the *negative-binomial*
+- this means we have to estimate the *dispersion* for each gene
+- the output is the same; a test statistic and a p-value
+
+
 ## "Median Ratio" Normalisation
 
 - create a "reference" sample that comprises the average counts for each gene
 - for a given sample, divide each gene by the average counts
   + then for each sample take the median of these values
   + this is the *scale-factor*
-
-## Statistical testing
-
-- count-based data are not observed to be normally-distributed
-- using a t-test as we did for microarrays would not be appropriate
-- instead we use something called the *negative-binomial*
-- this means we have to estimate the *dispersion* for each gene
+- doesn't account for gene-length - but this isn't required when comparing the same gene across all samples
 
 ## The DESeq pipeline
 
@@ -112,8 +120,6 @@ Highly-expressed genes overrepresented at the cost of lowly expressed genes
   + we can run the steps manually if we wish..
 - notice that the *raw counts* are used (not the input to PCA)
 - the comparisons performed are determined by the `design`
-
-
 
 ## Design specification
 
@@ -155,7 +161,7 @@ results(de)[1:3,]
 - can adjust the model to account for batch effects and other confounding factors
   + `~ batch + condition`
   
-## Further Viewing
+## Further Viewing / Reading
 
 - [Differential expression analysis](https://youtu.be/5tGCBW3_0IA) - 26 minutes
 - https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html
