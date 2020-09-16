@@ -82,7 +82,6 @@ For the top gene in our analysis the call to the function would be:-
 select(org.Mm.eg.db, keys="ENSMUSG00000027750",
        keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME")
 )
-
 ```
 
 Unfortunately, the authors of `dplyr` and `AnnotationDbi` have both decided to use the name `select` in their packages. To avoid confusion, the following code is sometimes used:-
@@ -100,7 +99,6 @@ anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results_ordered$ENSEMBL,
               keytype="ENSEMBL")
 # Have a look at the annotation
 head(anno)
-
 ```
 
 However, we have a problem that the resulting data frame has more rows than our results table. This is due to the *one-to-many* relationships that often occur when mapping between various identifiers.
@@ -116,7 +114,6 @@ Such duplicated entries can be identified using the `duplicated` function.
 dup_ids <- anno$ENSEMBL[duplicated(anno$ENSEMBL)]
 filter(anno, ENSEMBL %in% dup_ids) %>% 
   arrange(ENSEMBL) %>% head
-
 ```
 
 Fortunately, there are not too many so hopefully we won't lose too much information if we discard the entries that are duplicated. The first occurence of the duplicated ID will still be included in the table.
@@ -135,7 +132,6 @@ We can bind in the annotation information to the `results` data frame.
 ```{r}
 results_annotated <- left_join(results_ordered, anno,by="ENSEMBL")
 head(results_annotated)
-
 ```
 
 
@@ -188,7 +184,6 @@ The data we need for the plot is contained in our `results_annotated` data frame
 library(ggplot2)
 results_annotated %>% 
   ggplot(aes(x = log2FoldChange, y = -log10(padj))) + geom_point()
-
 ```
 
 
