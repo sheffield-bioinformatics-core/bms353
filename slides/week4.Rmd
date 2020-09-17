@@ -60,13 +60,12 @@ dds <- makeExampleDESeqDataSet()
 
 ## Week 4 overview
 
+- different sources of variation affecting counts
 - use `DESeq2` to assess differential expression between groups of interest
 
 
 ## Data Transformation
 
-- previously we transformed the data so we could visualise
-- there are a further set of considerations to take into account for differential expression
 - we obtain raw counts for each gene, but these are relative counts
 - the relationship between counts and RNA-expression is not the same for all genes across all samples
 
@@ -88,13 +87,13 @@ Longer genes likely to be sequenced more
 
 ![](lib_size.PNG)
 
-Highly-expressed genes overrepresented at the cost of lowly expressed genes
+Highly-expressed genes over-represented at the cost of lowly expressed genes
 (image from Harvard Chan Bioinformatics Core)
 
 ## Statistical testing
 
 - the count for a given gene is influenced by many technical factors
-- overall goal is to see assess whether a gene varies more between groups (biological variation) than it does within a group (technical / uninteresting)
+- overall goal is to see assess whether a gene varies more between groups (biological variation) than it does within a group (technical or  uninteresting variation)
 - for microarrays we used a t-test as our basis - as we could assume a *normal* distribution
 
 ## Statistical testing
@@ -160,6 +159,7 @@ results(de)[1:3,]
 - can apply differential expression to a subset of the data
 - can adjust the model to account for batch effects and other confounding factors
   + `~ batch + condition`
+- can change baseline for the contrast, or compare different sample groups (in the case of > 2 sample groups)
   
 ## Further Viewing / Reading
 
