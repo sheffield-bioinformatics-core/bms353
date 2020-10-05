@@ -68,6 +68,7 @@ dds <- makeExampleDESeqDataSet()
 
 - we obtain raw counts for each gene, but these are relative counts
 - the relationship between counts and RNA-expression is not the same for all genes across all samples
+  + there are a finite number of counts available for each sample, and how they are distributed among the genes may vary from sample to sample
 
 ## Depth
 
@@ -138,7 +139,7 @@ colData(dds)
 - adjusted p-values are automatically calculated
 - can use familiar `dplyr` functions to manipulate
   + `filter`, `arrange` etc
-- pay attention to the contrast that is calculated at the *baseline*
+- pay attention to the contrast that is calculated and the *baseline*
 
 ```{r message=FALSE,warning=FALSE}
 de <- DESeq(dds)
@@ -148,20 +149,22 @@ results(de)[1:3,]
 ## Column meanings
 
 - `baseMean`; average count for the gene
-- `log2FoldChange`; expression difference between sample groups on log$_2$ scale. i.e. 1 = 2$^1$ = 2, 1.5 = 2$^{1.5}$  $~$2.82
+- `log2FoldChange`; expression difference between sample groups on log$_2$ scale. i.e. 1 = 2$^1$ = 2, 1.5 = 2$^{1.5}$
 - (`lfcSE`; variability of the log fold change estimate)
 - (`stat`; the test statistic)
 - `pvalue`; the p-value - probability of obtaining the observed log fold-change due to chance alone
 - `padj`; the p-value after multiple testing adjustment (BH)
 
-## Other considerations
+## Beyond the two-group analysis
 
 - can apply differential expression to a subset of the data
 - can adjust the model to account for batch effects and other confounding factors
-  + `~ batch + condition`
-- can change baseline for the contrast, or compare different sample groups (in the case of > 2 sample groups)
+  + `~ CellType + condition`
+- can change baseline for the contrast, or compare different sample groups 
+
   
 ## Further Viewing / Reading
 
-- [Differential expression analysis](https://youtu.be/5tGCBW3_0IA) - 26 minutes
 - https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html
+- [Differential expression analysis](https://youtu.be/5tGCBW3_0IA) - 26 minutes
+- [RNA-seq count normalisation explained](https://youtu.be/TTUrtCY2k-w) - 10 minutes

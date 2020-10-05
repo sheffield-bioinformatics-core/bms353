@@ -80,13 +80,6 @@ suppressPackageStartupMessages(library(DESeq2))
   + a raw count for each transcript
 - we will import the counts into R
 
-## tximport
-
-- first step is to use `tximport` to import the raw files and summarise to the gene-level
-- need to identify where the count files are located
-- need to define a mapping between transcripts and genes
-
-
 ## The DESeq2 package
 
 - along with `edgeR` one of the most popular packages for RNA-seq analysis in R
@@ -118,7 +111,7 @@ head(counts(dds))[,1:4]
 ## Data Transformation
 
 - many genes are lowly-expressed
-- some genes are extremely highly-expressed
+- some genes are extremely highly-expressed and highly-variable
   + property known as *heteroskedasticity*
 - visualisation is difficult on raw scale
 
@@ -256,6 +249,5 @@ pca$x %>% data.frame %>%
 ## Further viewing
 
 - [A gentle introduction to RNA-seq](https://youtu.be/tlf6wYJrwKY) - 18 minutes
-- [RNA-seq count normalisation explained](https://youtu.be/TTUrtCY2k-w) - 10 minutes
 - [Principal Components Analysis](https://www.youtube.com/watch?v=0Jp4gsfOLMs) - 9 minutes
 

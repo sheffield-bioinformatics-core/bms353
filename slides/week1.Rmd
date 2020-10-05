@@ -47,19 +47,19 @@ knitr::opts_chunk$set(echo = FALSE)
 
 ## Course Aims - specifics
 
-- walk through RNA-seq workflow in R
+- Walk through RNA-seq workflow in R
   + quality assessment
   + differential expression
   + visualisation
   + downstream analysis
-- by the end you should have a reproducible report for the above analysis
+- By the end you should have a reproducible report for the above analysis
 
 ## Course Aims - high-level
 
 - Creating reproducible reports
   + not just showing the answer - but how you got to it
 - Getting stuck, and figuring out how to solve errors
-- interpreting and questioning data
+- Interpreting and questioning data
 
 ## Prior knowledge
 
@@ -68,7 +68,8 @@ knitr::opts_chunk$set(echo = FALSE)
   + ggplot2
 - RNA-seq workflow
   + in Galaxy
-  
+- sbc.shef.ac.uk/bms397
+
 ## Why R?
 
 - Reputation
@@ -77,11 +78,35 @@ knitr::opts_chunk$set(echo = FALSE)
 - Support
 - **Reproducibility**
 
+## Reproducibility
+
+![](SidneyHarris_MiracleWeb.jpg)
+
+
 ## Week 1
 
 - Recap on RStudio and how to make reproducible reports
 - Introduce the resources available through Bioconductor
 - Setup software and data for the rest of the course
+
+## RStudio recap
+
+- Various reporting and documenting formats
+  + the Terminal
+  + R script
+  + R markdown
+  + R notebook
+- Discuss merit of each format
+
+## Bioconductor
+
+> committed to open source, collaborative, distributed software and literate, reproducible research. Enabling user and developer communities is an essential part of our mission
+
+- Software packages
+- Example datasets
+- Workflows and documentation
+- Support forum
+
 
 ## Other viewing
 
@@ -89,6 +114,4 @@ knitr::opts_chunk$set(echo = FALSE)
 - [Bioconductor introduction](https://youtu.be/dg6NvmMVQ3I) - 5 minutes
 - [A tour of the Bioconductor website](https://www.youtube.com/watch?v=HgbnSMiqlOg) - 5 minutes
 - [The importance of reproducibility in high-throughput Biology](https://youtu.be/7gYIs7uYbMo) - 37 minutes
-
-
 

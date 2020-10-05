@@ -192,10 +192,7 @@ vsd <- varianceStabilizingTransformation(dds)
 pheatmap::pheatmap(assay(vsd)[top_genes,],scale = "row")
 ```
 
-
-
 ## Further Viewing
-
 
 - [Drawing and Interpreting Heatmaps](https://youtu.be/oMtDyOn2TCc) - 16 minutes
 - [Useful plots and bad plots](https://youtu.be/46-t2jOYsyY) - 17 minutes
