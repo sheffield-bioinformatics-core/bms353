@@ -10,7 +10,7 @@ editor_options:
   chunk_output_type: inline
 ---
 ```{r setup, include=FALSE, message=FALSE,warning=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message=FALSE,warning = FALSE)
 ```
 <img src="images/logo-sm.png" style="position:absolute;top:40px;right:10px;" width="200" />
 
@@ -34,7 +34,7 @@ BiocManager::install("genefilter")
 
 # Importing the data
 
-The data from this experiment comprises nine paired tumor/normal colon tissues on Illumina HT12\_v3 gene expression Beadchips. We will assume that you already know the accession number (GSE....) for the dataset that you want to download. This should usually be declared as part of the manuscript, and journals are becoming increasingly strict about making sure that data accompanying a publication are available through a suitable repository. The Gene Expression Omnibus (GEO) is one such resource for biological data.
+The data from this experiment comprises nine paired tumor/normal colon tissues on Illumina HT12\_v3 gene expression Beadchips. Journals are becoming increasingly strict about making sure that data accompanying a publication are available through a suitable repository. The Gene Expression Omnibus (GEO) is one such resource for biological data.
 
 
 ```{r echo=FALSE,message=FALSE}
@@ -50,7 +50,7 @@ The [landing page](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE33126) 
 
 The `getGEO` function from `GEOquery` can then import these data into R. The data are a bit more complicated that the spreadsheets we have dealt with so far, so we have to use a specialised package rather than `read_csv` etc.
 
-```{r cache=TRUE, message=FALSE}
+```{r message=FALSE}
 library(GEOquery)
 ## can change the url to be the dataset that you want.
 
@@ -71,7 +71,7 @@ gse
 
 ```
 
-The microarray technology employed has given us a gene expression measurement for each probe (/ gene) and biological sample. This is a data matrix with one row for each probe (/gene ) and one column for each sample. However, this is not sufficient information for the analysis. We also need to know
+The microarray technology employed has given us a gene expression measurement for each probe (or gene) and biological sample. This is a data matrix with one row for each probe (or gene ) and one column for each sample. However, this is not sufficient information for the analysis. We also need to know
 
 - Which biological groups each sample belongs to, and any other relevant information.
     + e.g. tumour/normal status, age, gender, batch
@@ -89,9 +89,9 @@ exprs(gse) ## print the expression data
 ```
 
 
-# Quality Asssessment and Normalisation (if required)
+# Normalisation (if required)
 
-For visualisation and statistical analysis, we will inspect the data to discover what *scale* the data are presented in and check if they have been normalised. Most methods will work better if the data are on a log$_2$ scale; typically in the range of 0 to 16. 
+Prior to statistical analysis, we will inspect the data to discover if all possible sources of technical variation have been accounted for, and that all samples are of sufficient quality to be included.
 
 The `exprs` function can retrieve the expression values as a data frame; with one column per-sample and one row per-gene.
 
@@ -102,7 +102,16 @@ The `summary` function can then be used to print the distributions.
 summary(exprs(gse))
 ```
 
-From this output we clearly see that the values go beyond 16, so we will need to perform a log$_2$ transformation. We can save our normalised values as a new object so we can use them later. A `boxplot` can also be generated to see if the data have been normalised. Each "box" on the plot shows the distribution of gene expression measurements for a particular sample. If so, the distributions of each sample should be highly similar.
+It is more convenient to visualise the distributions on a boxplot. However, using the `boxplot` function on the data is not very illuminating. 
+
+```{r}
+## use the base boxplot function so we don't have to re-arrange the data
+boxplot(exprs(gse))
+```
+
+The issue is with the scale of the dataset. Each sample has a handful of genes that are highly-expressed, but the majority are lowly-expressed. A log$_2$ transformation is often applied prior to visualisation. This compresses the data, make it easier to compare samples. It also has some other nice properties that are helpful for statistical analysis.
+
+The `boxplot` can also assessed to see if the data have been normalised. Each "box" on the plot shows the distribution of gene expression measurements for a particular sample. If so, the distributions of each sample should be highly similar. Data downloaded from public repositories such as GEO will often be normalised.
 
 ```{r}
 normData <- log2(exprs(gse))
@@ -142,7 +151,7 @@ sampleInfo
 ```
 
 
-## Exporting the data
+## Incorporating the feature data
 
 We can export the expression data to a `csv` for inspection in Excel using the `write_csv` function from `readr`. The expression values themselves will probably not be very useful as they will be named according to manufacturer ID rather than gene name (for example). We can create a matrix by joining the expression matrix with the feature annotation.
 
@@ -244,11 +253,11 @@ The `p.adjust` function is a general-purpose function for adjusting p-values.  T
     + How many genes have an *adjusted* p-value less than 0.05?
 </div>
 
-# Further processing and visualisation of DE results
+# Interpretation of Results
 
 At the moment our results are not particularly easy to navigate as the only information to identify each gene is the identifier that the microarray manufacturer has assigned. Fortunately, the GEO entry contains extensive annotation that we can add. The annotation data can be retrieved with the `fData` function and we restrict to columns we are interested in using `select`.
 
-**For your own data, you will have to choose the columns that are of interest to you. You probably won't have the same column headings used here**.
+**For your other datasets, you will have to choose the columns that are of interest to you. You probably won't have the same column headings used here**.
 
 Once an annotation data frame has been created, it merged to our results using the `left_join` function.
 
@@ -259,35 +268,6 @@ anno <- tibble::rownames_to_column(anno,"ID")
 test_results <- left_join(test_results,anno)
 ```
 
-
-
-
-
-The "*Volcano Plot*" function is a common way of visualising the results of a DE analysis. The $x$ axis shows the log-fold change and the $y$ axis is some measure of statistical significance, which in this case is the log-odds, or "B" statistic. A characteristic "volcano" shape should be seen.
-
-
-The basic plot is created as follows:-
-
-```{r}
-## Make sure you have ggplot2 loaded
-library(ggplot2)
-ggplot(test_results,aes(x = dm, y=-log10(p.value))) + geom_point()
-```
-
-The flexibility of `ggplot2` allows us to automatically label points on the plot that might be of interest. For example, genes that meet a particular p-value and log fold-change cut-off. With the code below the values of `p_cutoff` and `fc_cutoff` can be changed as desired.
-
-```{r}
-## change according to your needs
-p_cutoff <- 0.05
-fc_cutoff <- 1
-
-test_results %>% 
-  mutate(Significant = p.value < p_cutoff, abs(dm) > fc_cutoff ) %>% 
-  ggplot(aes(x = dm, y = -log10(p.value), col=Significant)) + geom_point()
-```
-
-
-# Interpretation of Results
 
 The `filter` function from `dplyr` gives a convenient way to interrogate the table of results.
 
@@ -336,47 +316,8 @@ filter(test_results, p.value < 0.05, abs(dm) > 1) %>%
 
 <div class="warning">
 
-Remember that the t-test i
-s not recommended in practice for the analysis of microarray data. For alternative methods, see the limma user guide or watch this video
+Remember that the t-test is not recommended in practice for the analysis of microarray data. For alternative methods, see the limma user guide or watch this video
 
 [Microarray Analysis with limma](https://youtu.be/ZRet1oeGiUU)
 
 </div>
-
-
-## Optional (Clustering)
-
-## Sample clustering
-
-Unsupervised analysis is a good way to get an understanding of the sources of variation in the data. It can also identify potential outlier samples.
-
-The function `cor` can calculate the correlation (on scale between -1 and 1) in a pairwise fashion between all samples. A pair of samples with correlation close to 1 is highly similar. The correlation values are then used in an *un-supervised* clustering
-
-
-Among the many options for creating heatmaps in R, the `pheatmap` library is one of the more popular ones. The only argument it requires is a matrix of numerical values (such as the correlation matrix).
-
-```{r}
-library(pheatmap)
-## argument use="c" stops an error if there are any missing data points
-
-corMatrix <- cor(normData,use="c")
-pheatmap(corMatrix)                
-```
-
-We can incorporate sample information onto the plot to try and understand the clustering. We have already created such a data frame previously (`sampleInfo`). However, we need to take care that the rownames of these data match the columns of the correlation matrix.
-
-```{r}
-## Print the rownames of the sample information and check it matches the correlation matrix
-rownames(sampleInfo)
-colnames(corMatrix)
-
-## If not, force the rownames to match the columns
-
-rownames(sampleInfo) <- colnames(corMatrix)
-pheatmap(corMatrix,
-         annotation_col=sampleInfo)    
-```
-
-Here we see that the main separation is due to normal vs tumours; as we hope. Inspecting the correlation heatmap may reveal other issues in the data such as outlier samples and batch effects.
-
-Another approach to visualise the relationships between samples is Principal Components Analysis (PCA), which we will see later in the course.
