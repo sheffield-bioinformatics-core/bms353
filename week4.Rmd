@@ -68,6 +68,24 @@ We also have the output of the pre-processing section saved as an R object if yo
 load("Robjects/preprocessing.Rdata")
 ```
 
+We will be using these raw counts throughout the workshop and transforming them using methods in the `DESeq2` package. If TPM values are desired for some other application, we can extract them from the `tximport` object. These are the transcript-level TPM values that we saw earlier in the quant files that have been summarised to the gene-level.
+
+```{r}
+tpm <- txi$abundance
+write.csv(tpm, file="tpm_values.csv",quote=FALSE)
+```
+
+At the time of writing, *TPM* is the recommended way of transforming RNA-seq counts to account for gene length and library composition biases. DESeq2 also provides methods for extracting normalised counts as *FPKM* (fragments per kilobase per million mapped fragments) and *FPM* (fragments per million mapped fragments) which might be required for some other analysis or visualisation outside of Bioconductor or `DESeq2`.
+
+```{r}
+fpm <- fpm(dds)
+write.csv(fpm, file="fpm_values.csv",quote=FALSE)
+fpkm <- fpkm(dds)
+write.csv(fpkm, file="fpkm_values.csv",quote=FALSE)
+```
+
+# Checking and running the model
+
 We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
 Typically we decide the design for the analysis when we create the DESeq2 objects, but it can be modified prior to the differential expression analysis. The design tells `DESeq2` which sample groups to compare in the differential analysis. The name specified must correspond to a column in the sample information.
@@ -114,6 +132,8 @@ The results of the analysis can be obtained using the `results` function and dis
 ```{r}
 results(de_cellType)
 ```
+
+# Processing the DE results using tidyverse
 
 The output can be converted into a data frame and manipulated in the usual manner. It is recommended to use `dplyr` to manipulate the data frames with the standard set of operations detailed on the [dplyr cheatsheet](https://www.rstudio.com/wp-content/uploads/2015/02/data-wrangling-cheatsheet.pdf)
 
@@ -183,7 +203,7 @@ design(dds_status) <- ......
 
 
 
-## Changing the direction of the contrast
+# Changing the direction of the contrast
 
 In this initial analysis `DESeq2` has automatically decided which member of our sample groups to use as our baseline (`basal` in this case) so that the log2 fold changes are reported with a positive value meaning higher expression in `luminal`. If we want to change this behaviour we can change the `contrast` argument in the `results` function
 
@@ -229,7 +249,7 @@ vennDiagram(venn_data)
 
 </div>
 
-## Analysing a subset of the data
+# Analysing a subset of the data
 
 ```{r}
 dds_basal <- dds[,which(dds$CellType == "basal")]
