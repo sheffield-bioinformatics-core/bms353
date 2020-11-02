@@ -41,9 +41,7 @@ The course will present state-of-the art research in computational biology and e
 
 ## Contact
 
-web : [sbc.shef.ac.uk](https://sbc.shef.ac.uk)  
-twitter: [SheffBioinfCore](https://twitter.com/SheffBioinfCore)  
-email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk)
+email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
 # Week 1 - R for Reproducible Biological Analysis
 
@@ -63,9 +61,11 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 
 ## Materials
-
+<!--
+- [Rmarkdown]()
 - [html](week1.html)
-
+- [Solutions to exercise]
+-->
 
 # Week 2 - Introduction to analysis high-throughput biological data
 
@@ -80,16 +80,17 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Pre-materials
 
-- [Gene Expression Analysis and DNA microarray Assays](https://youtu.be/Hv5flUOsE0s) - 8 minutes
+<!--- [Gene Expression Analysis and DNA microarray Assays](https://youtu.be/Hv5flUOsE0s) - 8 minutes
 - [Quantile Normalisation for high-throughput Biology](https://youtu.be/ecjN6Xpv6SE) - 5 minutes
 - [Statistics for Genomics](https://youtu.be/3huF0DwxCtU) - 30 minutes
-- [Multiple Testing Correction](https://youtu.be/K8LQSvtjcEo) - 18 minutes
+- [Multiple Testing Correction](https://youtu.be/K8LQSvtjcEo) - 18 minutes-->
 
 
 ## Materials
 
+<!--
 - [html](week2.nb.html)
-- [markdown](week2.Rmd)
+- [markdown](week2.Rmd)-->
 
 
 # Week 3 - Importing RNA-seq counts into R and quality assessment
@@ -103,16 +104,18 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Pre-Materials
 
-- [A gentle introduction to RNA-seq](https://youtu.be/tlf6wYJrwKY) - 18 minutes
+<!--- [A gentle introduction to RNA-seq](https://youtu.be/tlf6wYJrwKY) - 18 minutes
 - [RNA-seq count normalisation explained](https://youtu.be/TTUrtCY2k-w) - 10 minutes
 - [Principal Components Analysis](https://www.youtube.com/watch?v=0Jp4gsfOLMs) - 9 minutes
+-->
 
 
 ## Materials
 
+<!--
 - [html](week3.nb.html)
 - [markdown](week3.Rmd)
-
+-->
 
 # Week 4 - Differential Expression for RNA-seq
 
@@ -124,13 +127,16 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Pre-materials
 
+<!--
 - [Differential expression analysis](https://youtu.be/5tGCBW3_0IA) - 26 minutes
+-->
 
 ## Materials
 
+<!--
 - [html](week4.nb.html)
 - [markdown](week4.Rmd)
-
+-->
 
 
 # Week 5 - Visualisation methods for RNA-seq data
@@ -147,13 +153,19 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Pre-materials
 
+<!--
+
 - [Drawing and Interpreting Heatmaps](https://youtu.be/oMtDyOn2TCc) - 16 minutes
 - [Useful plots and bad plots](https://youtu.be/46-t2jOYsyY) - 17 minutes
+-->
 
 ## Materials
 
+<!--
 - [html](week5.nb.html)
 - [markdown](week5.Rmd)
+-->
+
 
 # Week 6 - Pathways and further downstream analysis
 
@@ -165,12 +177,16 @@ email: [bioinformatics-core@sheffield.ac.uk](bioinformatics-core@sheffield.ac.uk
 
 ## Pre-Materials
 
+<!--
 - [Introduction to Functional Gene Analysis](https://youtu.be/clb0bh3zFSM) - 12 minutes
 - [Fisher's Exact test](https://youtu.be/udyAvvaMjfM) - 5 minutes
 - [GSEA theory](https://youtu.be/bT00oJh2x_4) - 9 minutes
+-->
 
 ## Materials
 
+<!--
 - [html](week6.nb.html)
 - [markdown](week6.Rmd)
 
+-->
