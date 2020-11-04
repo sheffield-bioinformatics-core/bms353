@@ -1,0 +1,71 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Introduction
+
+In this analysis we will extract the data for European countries from the gapminder dataset and discover which countries have the lowest correlation between time and life expectancy. In order to follow the code, you will need to install the following R packages.
+
+```{r packageInstall, eval=FALSE}
+install.packages("readr")
+install.packages("dplyr")
+install.packages("ggplot2")
+
+```
+
+We load the required packages to make the functions we need available.
+
+```{r packageLoad, message=FALSE,warning=FALSE}
+library(readr)
+library(dplyr)
+library(ggplot2)
+```
+
+The raw data can be found in the file `gapminder.csv`. As this is a *comma-separated* file we will use the function `read_csv` to import the data
+
+```{r dataImport, warning=FALSE} 
+gapminder <- read_csv("gapminder.csv")
+```
+
+## Filtering the data
+
+We filter the data by requiring the value in the `continent` column is equal to *Europe*. Should we require the data at a later date we can write a csv file.
+
+```{r dataFilter}
+# filter is case-sensitive, so make sure Europe is correct
+e_data <- filter(gapminder, continent == "Europe")
+write_csv(e_data, path="gapminder_europe.csv")
+```
+
+## Calculating the correlations
+
+The correlations can be calculated by first grouping the data according to the name of the country and summarising using the `cor` function between the `year` and `lifeExp` variables. This calculates the Pearson correlation which is a value between -1 and 1. 
+
+```{r calculateCorrelations, message=FALSE,warning=FALSE}
+group_by(e_data,country) %>% 
+  summarise(Cor = cor(year, lifeExp)) %>% 
+  arrange(Cor)
+```
+
+These correlations can be visualised as a simple bar chart. We are interested in countries with correlation less than 0.9, which are indicated by a red dotted line on the plot.
+
+```{r plot, echo=FALSE,message=FALSE,warning=FALSE} 
+group_by(e_data,country) %>% 
+  summarise(Cor = cor(year, lifeExp)) %>% 
+  arrange(Cor) %>% 
+  ggplot(aes(x = country, y = Cor)) + geom_col(fill="steelblue") + geom_hline(yintercept=0.9,col="red",lty=2) + coord_flip()
+```
+
+```{r lowCorrelation, echo=FALSE,message=FALSE,warning=FALSE}
+## filtering to countries with correlations less than 0.9
+## creating a variable that we can refer to using in-line code in the text
+
+low_cor <- group_by(e_data,country) %>% 
+  summarise(Cor = cor(year, lifeExp)) %>% 
+  filter(Cor < 0.9)
+```
+
+## Summary
+
+There are `r nrow(low_cor)` countries with correlation less than 0.9.
