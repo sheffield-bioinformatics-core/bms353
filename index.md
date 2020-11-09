@@ -62,7 +62,8 @@ email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
 ## Materials
 - [html](week1.html)
-- [Solutions to exercise]()
+- [Solutions to in-class exercise - Rmd](solutions/week1.Rmd)
+- [Solutions to in-class exercise - HTML](solutions/week1.nb.html)
 
 
 # Week 2 - Introduction to analysis high-throughput biological data
@@ -78,10 +79,10 @@ email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
 ## Pre-materials
 
-<!--- [Gene Expression Analysis and DNA microarray Assays](https://youtu.be/Hv5flUOsE0s) - 8 minutes
+- [Gene Expression Analysis and DNA microarray Assays](https://youtu.be/Hv5flUOsE0s) - 8 minutes
 - [Quantile Normalisation for high-throughput Biology](https://youtu.be/ecjN6Xpv6SE) - 5 minutes
 - [Statistics for Genomics](https://youtu.be/3huF0DwxCtU) - 30 minutes
-- [Multiple Testing Correction](https://youtu.be/K8LQSvtjcEo) - 18 minutes-->
+- [Multiple Testing Correction](https://youtu.be/K8LQSvtjcEo) - 18 minutes
 
 
 ## Materials
