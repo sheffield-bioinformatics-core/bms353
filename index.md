@@ -61,11 +61,9 @@ email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
 
 ## Materials
-<!--
-- [Rmarkdown]()
 - [html](week1.html)
-- [Solutions to exercise]
--->
+- [Solutions to exercise]()
+
 
 # Week 2 - Introduction to analysis high-throughput biological data
 
