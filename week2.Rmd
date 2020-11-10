@@ -234,9 +234,7 @@ sum(test_results$p.value < 0.05)
 nrow(test_results)*0.05 
 ```
 
-Now, assume for a moment that the null hypothesis is true for all genes, i.e., no gene is affected by the treatment with DPN. Then, by the definition of p value, we expect up to 5% of the genes to have a p
-value below 0.05. This amounts to 2440 genes. If we just considered the list of genes with a p value below 0.05 as differentially expressed, this list should therefore be expected to contain up to 2440/8158 = 30%
-false positives
+Now, assume for a moment that the null hypothesis is true for all genes, i.e., no gene is affected by the change between tumour and normal. Then, by the definition of p value, we expect up to 5% of the genes to have a p-value below 0.05. This amounts to 2440 genes. If we just considered the list of genes with a p value below 0.05 as differentially expressed, this list should therefore be expected to contain up to 2440/8158 = 30% false positives
 
 The `p.adjust` function is a general-purpose function for adjusting p-values.  The Benjamini-Hochberg method calculates for each gene an adjusted p value which answers the following question: if one called significant all genes with a p value less than or equal to this gene’s p value threshold, what would be the fraction of false positives (the false discovery rate, FDR) among them (in the sense of the calculation outlined above)?
 
@@ -276,16 +274,11 @@ The `filter` function from `dplyr` gives a convenient way to interrogate the tab
 filter(test_results, Symbol == "SMOX")
 ## Get results for genes with TP53 in the name
 filter(test_results, grepl("TP53", Symbol))
-## Get results for one chromosome
-filter(test_results, Chromosome==20)
 ```
 
 We can also filter according to p-value (adjusted) and fold-change cut-offs
 
 ```{r}
-p_cutoff <- 0.05
-fc_cutoff <- 1
-
 filter(test_results, p.value < 0.05, abs(dm) > 1)
 ```
 
@@ -298,18 +291,49 @@ filter(test_results, p.value < 0.05, abs(dm) > 1) %>%
 ```
 
 
+## Visualisation
+
+A common plot for displaying the results of a differential expression analysis is a *volcano plot*. It is a *scatter plot* that shows statistical significance and the magnitude of difference between conditions. They are used to identify which genes are the most significant and are also changing by the most amount.
+
+The data we need for the plot is contained in our `test_results` data frame. This basic plot displays a point for every gene, but does not take advantage of some of the other columns in the data frame.
+
+```{r}
+library(ggplot2)
+ggplot(test_results, aes(x = dm , y = -log10(p.value))) + geom_point()
+```
+An MA-plot is an alternative to the volcano plot with the x-axis being the average expression level of each gene, and the y-axis is the difference between groups.
+
+The `rowMeans` function can be used to calculate the means of each row in a numeric matrix
+
+### Exercise
+<div class="exercise">
+- Use the `rowMeans` function to calculate the average expression level for each gene
+- Add a column to `test_results`
+- Create the MA-plot
+
+</div>
+
+```{r}
+mutate(test_results, means= rowMeans(normData)) %>% 
+  ggplot(aes(x = means, y = dm)) + geom_point()
+
+```
+
+
 # Exercise for next time
 
 <div class="exercise">
 
-- Create a new RStudio project and write a markdown file to document the analysis of the GEO dataset `GSE33126`
+- Write a markdown file to document the analysis of the GEO dataset `GSE33126`
 - Include the key stages of the analysis in your report
   + downloading the data
   + quality assessment
   + log$_2$ transformation
   + statistical testing
   + export the results
-  
+- Use the `arrange` function to re-order the rows of the `test_results` data frame according to chromosome name
+- Modify the volcano plot above so that points are coloured according to whether the gene is differentially-expressed or not with adjusted p-value < 0.05
+  + HINT: you can use the `mutate` function to add an extra column to `test_results`
 </div>
 
 # Disclaimer
@@ -321,3 +345,5 @@ Remember that the t-test is not recommended in practice for the analysis of micr
 [Microarray Analysis with limma](https://youtu.be/ZRet1oeGiUU)
 
 </div>
+
+
