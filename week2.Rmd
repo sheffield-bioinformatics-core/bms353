@@ -24,6 +24,7 @@ Although considered outdated by many, the prevalence of microarrays in public re
 You will need to have installed the following packages before starting:-
 
 ```{r eval=FALSE}
+## You should already have these packages from the exercise in week 1
 install.packages("BiocManager")
 BiocManager::install("GEOquery")
 BiocManager::install("limma")
@@ -31,6 +32,15 @@ BiocManager::install("genefilter")
 
 ```
 
+
+## Learning outcomes
+
+- Defining the keys steps in the analysis of high-throughput biological data
+    + quality assessment
+    + normalisation
+    + differential expression
+- Outline the fundamentals of statistical testing for biological data
+- Demonstrate how familiar R functions can be applied to biological data
 
 # Importing the data
 
@@ -115,6 +125,8 @@ The `boxplot` can also assessed to see if the data have been normalised. Each "b
 
 ```{r}
 normData <- log2(exprs(gse))
+
+# the parameter outline=FALSE stops outliers being displayed on the plot - making it a bit tidier
 boxplot(normData,outline=FALSE)
 ```
 
@@ -157,6 +169,8 @@ We can export the expression data to a `csv` for inspection in Excel using the `
 
 ```{r}
 library(readr)
+# cbind:- column bind. Join two matrices together
+
 full_output <- cbind(fData(gse),normData)
 write_csv(full_output, path="gse_full_output.csv")
 ```
@@ -208,6 +222,8 @@ head(test_results)
 However, you might notice from the output that the names of each probe doesn't have a column heading associated with it. We have to make a small change to the output so that `dplyr` functions can be used.
 
 ```{r}
+## dplyr doesn't like rownames. Instead add the probe IDs to a column in the data frame
+
 test_results <- tibble::rownames_to_column(test_results,"ID")
 ```
 
@@ -247,9 +263,15 @@ The `p.adjust` function is a general-purpose function for adjusting p-values.  T
 
 <div class="exercise">
 - How would you re-arrange the rows of`test_results` according to p-value? Which gene has the lowest p-value?
-- Add a new column `padj` to `test_results`containing p-values adjusted with the BH method. Consult the R introductory course or `dplyr` cheatsheet to recall how to add columns to a data frame.
+- Add a new column `padj` to `test_results`containing p-values adjusted with the "BH" method. Consult the R introductory course or `dplyr` cheatsheet to recall how to add columns to a data frame.
     + How many genes have an *adjusted* p-value less than 0.05?
 </div>
+
+```{r}
+
+```
+
+
 
 # Interpretation of Results
 
@@ -297,25 +319,42 @@ A common plot for displaying the results of a differential expression analysis i
 
 The data we need for the plot is contained in our `test_results` data frame. This basic plot displays a point for every gene, but does not take advantage of some of the other columns in the data frame.
 
+The p-values need to be transformed so that higher on the y-axis indicates a more significant result. A log10 transformation is typically used.
+
+```{r}
+## a few of quick examples of how log10 works
+log10(100)
+log10(1000)
+log10(0.1)
+log10(0.001)
+log10(0.05)
+
+```
+
+
 ```{r}
 library(ggplot2)
 ggplot(test_results, aes(x = dm , y = -log10(p.value))) + geom_point()
 ```
+
+
 An MA-plot is an alternative to the volcano plot with the x-axis being the average expression level of each gene, and the y-axis is the difference between groups.
 
-The `rowMeans` function can be used to calculate the means of each row in a numeric matrix
+![](https://upload.wikimedia.org/wikipedia/commons/6/63/Pre-normalization.MAplot.png)
+
+The `rowMeans` function can be used to calculate the means of each row in a numeric matrix. This will be required to construct an MA plot.
 
 ### Exercise
 <div class="exercise">
 - Use the `rowMeans` function to calculate the average expression level for each gene
-- Add a column to `test_results`
-- Create the MA-plot
+- Use `mutate` to insert the average expression levels as a new column
+- Create the MA-plot using ggplot2
 
 </div>
 
 ```{r}
-mutate(test_results, means= rowMeans(normData)) %>% 
-  ggplot(aes(x = means, y = dm)) + geom_point()
+
+
 
 ```
 
@@ -333,7 +372,7 @@ mutate(test_results, means= rowMeans(normData)) %>%
   + export the results
 - Use the `arrange` function to re-order the rows of the `test_results` data frame according to chromosome name
 - Modify the volcano plot above so that points are coloured according to whether the gene is differentially-expressed or not with adjusted p-value < 0.05
-  + HINT: you can use the `mutate` function to add an extra column to `test_results`
+  + HINT: you can use the `mutate` function to add an extra column to `test_results` indicating whether a p-value is less 
 </div>
 
 # Disclaimer
