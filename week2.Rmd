@@ -370,7 +370,7 @@ The `rowMeans` function can be used to calculate the means of each row in a nume
   + log$_2$ transformation
   + statistical testing
   + export the results
-- Use the `arrange` function to re-order the rows of the `test_results` data frame according to chromosome name
+- Use the `arrange` function to re-order the rows of the `test_results` data frame according to chromosome name and Cytoband. How can you remove genes where the Chromosome or Cytoband column is empty?
 - Modify the volcano plot above so that points are coloured according to whether the gene is differentially-expressed or not with adjusted p-value < 0.05
   + HINT: you can use the `mutate` function to add an extra column to `test_results` indicating whether a p-value is less 
 </div>
