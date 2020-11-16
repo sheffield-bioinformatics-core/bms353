@@ -87,10 +87,8 @@ email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
 ## Materials
 
-<!--
 - [html](week2.nb.html)
-- [markdown](week2.Rmd)-->
-
+- [markdown](week2.Rmd)
 
 # Week 3 - Importing RNA-seq counts into R and quality assessment
 
