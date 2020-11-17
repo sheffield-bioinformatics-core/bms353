@@ -142,15 +142,6 @@ head(tx2gene)
 
 
 
-# Exercise
-
-<div class="exercise">
-- How many *genes* are there in total?
-- What is the average number of transcripts-per-gene?
-- Which gene has be most number of transcripts?
-  + HINT: the `dplyr` function `count` might be useful here
-</div>
-
 We can import our dataset with the `tximport` package. The `ignoreTxVersion` argument needs to be set to `TRUE`; you might have noticed that the transcript names in the quant files have a version number at the end `e.g. .1`, so won't match the transcript names in the `tx2gene` table.
 
 ```{r}
