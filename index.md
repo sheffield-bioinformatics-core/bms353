@@ -43,6 +43,12 @@ The course will present state-of-the art research in computational biology and e
 
 email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
+# Course Data
+
+Please use the link below to download the example RNA-seq dataset for the course
+
+- [Download here](https://sbc.shef.ac.uk/bms353/bms353.zip)
+
 # Week 1 - R for Reproducible Biological Analysis
 
 ## Learning outcomes
@@ -101,7 +107,7 @@ email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
 ## Pre-Materials
 
-A gentle introduction to RNA-seq](https://youtu.be/tlf6wYJrwKY) - 18 minutes
+- [A gentle introduction to RNA-seq](https://youtu.be/tlf6wYJrwKY) - 18 minutes
 - [RNA-seq count normalisation explained](https://youtu.be/TTUrtCY2k-w) - 10 minutes
 - [Principal Components Analysis](https://www.youtube.com/watch?v=0Jp4gsfOLMs) - 9 minutes
 
