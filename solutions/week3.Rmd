@@ -1,0 +1,69 @@
+---
+title: "Week 3 Solutions"
+output: html_notebook
+---
+
+# Identifying the input files
+
+```{r}
+dirs <- list.files("salmon_quant/")
+quant_files <- list.files("salmon_quant/",pattern="quant.sf.gz",recursive = TRUE,full.names = TRUE)
+names(quant_files) <- dirs
+quant_files
+```
+
+# Importing the files
+
+```{r}
+tx2gene <- read_csv("tx2gene.csv")
+sampleinfo <- read.delim("meta_data/sampleInfo.txt")
+```
+
+```{r}
+library(tximport)
+
+txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene,ignoreTxVersion = TRUE)
+```
+
+```{r}
+library(DESeq2)
+dds <- DESeqDataSetFromTximport(txi, 
+                                colData = sampleinfo,
+                                design <- ~CellType)
+dds
+```
+
+```{r}
+mutate(sampleinfo, LibSize = colSums(assay(dds))/1e6) %>% 
+  ggplot(aes(x = Name, y = LibSize)) + geom_col(fill="steelblue") + geom_hline(yintercept = 20,col="red",lty=2)
+```
+
+# Repeat analysis with new sample sheet
+
+
+```{r}
+sampleinfo_corrected <- read_tsv("meta_data/sampleInfo_corrected.txt")
+dds <- DESeqDataSetFromTximport(txi, 
+                                colData = sampleinfo_corrected,
+                                design <- ~CellType)
+dds
+```
+
+## Verify sample groups are correct
+
+```{r}
+vsd <- vst(dds)
+plotPCA(vsd,intgroup="CellType")
+```
+## ggplot2 version of boxplot
+
+```{r}
+library(tidyr)
+assay(vsd) %>% 
+  data.frame %>% 
+  tibble::rownames_to_column("Gene") %>% 
+  pivot_longer(-Gene) %>% 
+  ggplot(aes(x = name, y = value)) + geom_boxplot(fill="steelblue") + theme(axis.text.x.bottom = element_text(angle=90))
+  
+```
+
