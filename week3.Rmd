@@ -133,6 +133,7 @@ dim(quants)
 
 Our differential expression analysis will be carried-out at the *gene-level*, so we need to perform an additional level of summarisation before we can proceed. Effectively we need to sum the counts for all exons that belong to each gene. The *mappings* from transcript to genes can be obtained by a pre-built database (such as Ensembl). We have provided such data in a csv file that we can read in. See the Appendix if you want to know the details
 
+The `tx2gene.csv` file was missing from early version of the course data zip. If missing you can download it [from here](tx2gene.csv)
 
 ```{r}
 tx2gene <- read_csv("tx2gene.csv")
@@ -205,8 +206,7 @@ sum(assay(dds)[,1])
 A convenience function `colSums` exists for calculating the sum of each column in a matrix, returning a `vector` as a result.
 
 ```{r dgeLibrarySizes}
-sampleinfo %>% mutate(LibSize=colSums(assay(dds))) %>% 
-  ggplot(aes(x = Name, y = LibSize)) + geom_col()
+colSums(assay(dds))
 
 ```
 
@@ -285,14 +285,12 @@ Furthermore, the person creating the sample sheet has been inconsistent about th
 ```{r correctSampleSheet}
 library(stringr)
 library(dplyr)
-sampleinfo_corrected <- sampleinfo
-
-sampleinfo_corrected <- mutate(sampleinfo_corrected, CellType = str_to_lower(CellType))
-sampleinfo_corrected <- mutate(sampleinfo_corrected, Status = str_trim(Status))
-sampleinfo_corrected <- mutate(sampleinfo_corrected, CellType = ifelse(Name == "MCL1-DH","basal",CellType))
-sampleinfo_corrected <- mutate(sampleinfo_corrected, CellType= ifelse(Name == "MCL1-LA","luminal",CellType))
-
-write.table(sampleinfo_corrected, file="meta_data/sampleInfo_corrected.txt",sep="\t",row.names = FALSE)
+sampleinfo %>% 
+mutate(CellType = str_to_lower(CellType)) %>% 
+mutate(Status = str_trim(Status)) %>% 
+mutate(CellType = ifelse(Name == "MCL1-DH","basal",CellType)) %>% 
+mutate(CellType= ifelse(Name == "MCL1-LA","luminal",CellType)) %>% 
+write.table(file="meta_data/sampleInfo_corrected.txt",sep="\t",row.names = FALSE)
 ```
 
 # Exercise for next time
@@ -302,8 +300,15 @@ write.table(sampleinfo_corrected, file="meta_data/sampleInfo_corrected.txt",sep=
 - Re-create the `DESeqDataset` object to include the corrected sample information
 - Re-run the plotPCA function on the new data and verify that the sample groups now look correct
 - Make an R notebook to document your analysis
+- We used "base R" to make a boxplot of the variance-stabilised counts for convenience. To keep with the tidyverse theme, try to make the plot using `ggplot2`. For the first few steps you will need to make a data frame with an ID column (see below). Then investigate the `tidyr` package to transform the data into a shape that `ggplot2` is happy with.
 </div>
 
+```{r}
+
+assay(vsd) %>% 
+  data.frame %>% 
+  tibble::rownames_to_column("Gene")
+```
 
 # Appendix
 
@@ -345,7 +350,7 @@ The Bioconducor website provides many pre-built transcript databases for some or
 
 However, it is quite easy to build such a database if we have a `gtf` file using the `GenomicFeatures` infrastructure.
 
-```{r message=FALSE}
+```{r message=FALSE,eval=FALSE}
 ## Could take a few minutes to run the makeTxDbFromGFF command
 library(GenomicFeatures)
 txdb <- makeTxDbFromGFF(gtf_file)
@@ -353,17 +358,17 @@ txdb <- makeTxDbFromGFF(gtf_file)
 
 The database has a number of predefined "keys" and "columns" that have to be specified when creating a query
 
-```{r}
+```{r,eval=FALSE}
 keytypes(txdb)
 ```
 
-```{r}
+```{r,eval=FALSE}
 columns(txdb)
 ```
 
 Sometimes we would want to query the positions for a limited set of selected genes (perhaps the results of a differential-expression analysis), but in this case we want the gene names that correspond to every transcript in the database. To get the names of all transcripts we can use the `keys` function. We then compose the query using the `select` function to return a data frame
 
-```{r}
+```{r,eval=FALSE}
 k <- keys(txdb, keytype="TXNAME")
 tx_map <- select(txdb, keys = k, columns="GENEID", keytype = "TXNAME")
 head(tx_map)
