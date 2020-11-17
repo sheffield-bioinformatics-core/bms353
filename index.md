@@ -101,10 +101,10 @@ email: [m.j.dunning@sheffield.ac.uk](m.j.dunning@sheffield.ac.uk)
 
 ## Pre-Materials
 
-<!--- [A gentle introduction to RNA-seq](https://youtu.be/tlf6wYJrwKY) - 18 minutes
+A gentle introduction to RNA-seq](https://youtu.be/tlf6wYJrwKY) - 18 minutes
 - [RNA-seq count normalisation explained](https://youtu.be/TTUrtCY2k-w) - 10 minutes
 - [Principal Components Analysis](https://www.youtube.com/watch?v=0Jp4gsfOLMs) - 9 minutes
--->
+
 
 
 ## Materials
