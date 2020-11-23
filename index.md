@@ -95,6 +95,9 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 - [html](week2.nb.html)
 - [markdown](week2.Rmd)
+- [solutions - markdown](solutions/week2.Rmd)
+- [solutions - HTML](solutions/week2.nb.html)
+
 
 # Week 3 - Importing RNA-seq counts into R and quality assessment
 
@@ -115,10 +118,10 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 ## Materials
 
-<!--
+
 - [html](week3.nb.html)
 - [markdown](week3.Rmd)
--->
+
 
 # Week 4 - Differential Expression for RNA-seq
 
