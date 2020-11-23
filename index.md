@@ -133,9 +133,8 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 ## Pre-materials
 
-<!--
+
 - [Differential expression analysis](https://youtu.be/5tGCBW3_0IA) - 26 minutes
--->
 
 ## Materials
 
