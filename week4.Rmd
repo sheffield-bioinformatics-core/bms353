@@ -42,8 +42,9 @@ The previous section walked-through the pre-processing and transformation of the
 
 Note that although we spent some time looking at the quality of our data , these steps are not required prior to performing differential expression so are not shown here. Remember, `DESeq2` [requires raw counts](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#why-un-normalized-counts) so the `vst` transformation is not shown as part of this basic protocol.
 
-```{r eval=FALSE}
-
+```{r message=FALSE}
+library(tximport)
+library(DESeq2)
 dirs <- list.files(file.path("salmon_quant/"))
 quant_files <- paste0("salmon_quant/",dirs,"/quant.sf.gz")
 names(quant_files) <- dirs
@@ -61,30 +62,17 @@ dds <- DESeqDataSetFromTximport(txi,
 
 ```
 
-We also have the output of the pre-processing section saved as an R object if you didn't manage to complete these steps.
+It would be a good idea to save the results of the pre-processing so we don't have to repeat it every time.
 
 ```{r}
-## Only run if you didn't complete the previous section on pre-processing
-load("Robjects/preprocessing.Rdata")
+dir.create("Robjects/dds.rds",showWarnings = FALSE)
+saveRDS(dds, file="Robjects/dds.rds")
 ```
 
-We will be using these raw counts throughout the workshop and transforming them using methods in the `DESeq2` package. If TPM values are desired for some other application, we can extract them from the `tximport` object. These are the transcript-level TPM values that we saw earlier in the quant files that have been summarised to the gene-level.
 
-```{r}
-tpm <- txi$abundance
-write.csv(tpm, file="tpm_values.csv",quote=FALSE)
-```
+We will be using these raw counts throughout the workshop and transforming them using methods in the `DESeq2` package. If you want to know about alternative methods for count normalisation they are covered on [this page](https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html).
 
-At the time of writing, *TPM* is the recommended way of transforming RNA-seq counts to account for gene length and library composition biases. DESeq2 also provides methods for extracting normalised counts as *FPKM* (fragments per kilobase per million mapped fragments) and *FPM* (fragments per million mapped fragments) which might be required for some other analysis or visualisation outside of Bioconductor or `DESeq2`.
-
-```{r}
-fpm <- fpm(dds)
-write.csv(fpm, file="fpm_values.csv",quote=FALSE)
-fpkm <- fpkm(dds)
-write.csv(fpkm, file="fpkm_values.csv",quote=FALSE)
-```
-
-# Checking and running the model
+# Differential expression with DESeq2
 
 We have previously defined the test condition using the `design` argument when we created the object. This can be checked using the `design` function.
 
@@ -95,21 +83,86 @@ colData(dds)
 design(dds) <- ~CellType
 ```
 
+As we will see, the `DESeq2` package provides a convenient function for performing the differential expression.
+
+The `DESeq` function runs a couple of processing steps automatically to adjust for different library size and gene-wise variability, which you can read about in the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model). 
 
 
-The function runs a couple of processing steps automatically to adjust for different library size and gene-wise variability, which you can read about in the [DESeq2 vignette](http://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#the-deseq2-model).
+The counts that we have obtained via sequencing are subject to random sources of variation. The purpose of differential expression is to determine if potential sources of biological variation (e.g. counts observed from different sample groups) are greater than random noise.
 
-Firstly apply the median ratio normalisation method to compensate for differences in library sizes
+The median of ratios normalisation method is employed in DESeq2 to account for *sequencing depth* and *RNA composition*. Let's go through a short worked example (courtesy of [https://hbctraining.github.io/DGE_workshop/lessons/02_DGE_count_normalization.html](here)) to explain the process.
+
+```{r}
+## create a small example matrix of "counts"
+test_data <- matrix(c(1489,22,793,76,521,906,13,410,42,1196),nrow=5)
+rownames(test_data) <- c("EF2A","ABCD1","MEFV","BAG1","MOV10")
+colnames(test_data) <- c("SampleA","SampleB")
+test_data
+```
+
+Firstly, an "average" or reference sample is created that represents the counts on a typical sample in the dataset. The *geometric mean* is used rather than the *arithmetic* mean. In other words the individual counts are multiplied rather than summed and the measure should be more robust to outliers.
+
+
+```{r}
+psuedo_ref <- sqrt(rowProds(test_data))
+psuedo_ref
+```
+
+A ratios of sample to "psuedo reference" are then calculated for each gene. We are assuming that most genes are not changing dramatically, so this ratio should be somewhere around 1.
+
+```{r}
+test_data/psuedo_ref
+```
+
+`DESeq2` defines size factors as being the *median* of these ratios for each sample (median is used so any outlier genes will not affect the normalisation). 
+
+```{r}
+norm_factors <- colMedians(test_data/psuedo_ref)
+norm_factors
+```
+
+Individual samples can then normalised by dividing the count for each gene by the corresponding normalization factor.
+
+```{r}
+test_data[,1] / norm_factors[1]
+```
+
+and for the second sample...
+
+```{r}
+test_data[,2] / norm_factors[2]
+
+```
+
+The size factors for each sample in our dataset can be calculated using the `estimateSizeFactorsForMatrix` function.
+
+```{r}
+sf <- estimateSizeFactorsForMatrix(assay(dds))
+sf
+```
+
+The estimation of these factors can also take gene-lengths into account, and this is implemented in the `estimateSizeFactors` function. Extra normalization factor data is added to the `dds` object.
+
+
 
 ```{r eval=FALSE}
 dds <- estimateSizeFactors(dds)
-
+dds
 ```
+
+Should we wish, we can retrieve these factors using the `normalizationFactors` function
+
+```{r}
+head(normalizationFactors(dds))
+```
+
 
 estimate the dispersion for each gene
 
 ```{r eval=FALSE}
 dds <- estimateDispersions(dds)
+dds
+
 ```
 
 Apply statistical testing based on the negative binomial distribution.
@@ -231,6 +284,7 @@ results_status <- data.frame(results(de_status))
 
 A venn diagram is a common way of visualising the overlap between two genelists. We need to create a data frame where each column indicates whether each gene is differentially expressed in a particular contrast or not. To create such columns we can do a logical test on the adjusted p-values from our results tables.
 
+The following shows a (not particularly meaningful) example.
 
 ```{r message=FALSE}
 venn_data <- data.frame(CellType = results_cellType$padj<0.05,
@@ -256,11 +310,13 @@ dds_basal <- dds[,which(dds$CellType == "basal")]
 design(dds_basal) <- ~Status
 de_basal <- DESeq(dds_basal)
 ```
+
 ```{r}
 dds_luminal <- dds[,which(dds$CellType == "luminal")]
 design(dds_luminal) <- ~Status
 de_luminal <- DESeq(dds_luminal)
 ```
+
 ```{r}
 venn_data <- data.frame(Basal = results(de_basal)$padj < 0.05, Luminal  = results(de_luminal)$padj<0.05)
 
@@ -310,6 +366,7 @@ write.csv(countMatrix,file="normalized_counts.csv")
 
 - Add a differential expression section to your report
 - How many differentially expressed genes are found with adjusted p-value less than 0.05 and absolute log fold-change > 1 in the *multi-factor* analysis? How does this compare to the number of genes detected in the workshop exercise?
+- You may have noticed that some genes in the `DESeq2` output have `NA` values for p-value. Why is this? Check the "Frequently asked questions" section of the DESeq2 manual to find out. Is there an argument in the `results` function to disable this behaviour?
 
 </div>
 
