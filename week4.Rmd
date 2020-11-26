@@ -150,14 +150,7 @@ dds <- estimateSizeFactors(dds)
 dds
 ```
 
-Should we wish, we can retrieve these factors using the `normalizationFactors` function
-
-```{r}
-head(normalizationFactors(dds))
-```
-
-
-estimate the dispersion for each gene
+In preparation for differential expression DESeq2 also need a reliable estimate of the variability of each gene; which it calls *dispersion*. 
 
 ```{r eval=FALSE}
 dds <- estimateDispersions(dds)
@@ -165,22 +158,22 @@ dds
 
 ```
 
-Apply statistical testing based on the negative binomial distribution.
+A statistical test can then be applied. As the data are count-based and not normally-distributed a t-test would not be appropriate. Most tests are based on a *Poisson* or *negative-binomial* distribution; negative binomial in the case of `DESeq2`. Although you might not be familiar with the negative binomial, the results should be in a familiar form with fold-changes and p-values for each gene.
 
 ```{r eval=FALSE}
 dds <- nbinomWaldTest(dds)
 ```
 
-Fortunately, there is one convenient function that will apply the three steps
+It may seem like there is a lot to remember, but fortunately there is one convenient function that will apply the three steps. The messages printed serve as reminders of the steps included.
 
 ```{r}
 de_cellType <- DESeq(dds)
-
+de_cellType
 ```
 
 
 
-The results of the analysis can be obtained using the `results` function and displayed to the screen. Each row is a particular gene measured in the study (i.e. all genes in the organism being studied) and each column reports some aspect of the differential expression analysis for that gene. Note that **all genes** are reported. At this stage the gene identifiers are not very informative, something we will fix in the next section. 
+The results of the analysis are not immediately accessible, but can be obtained using the `results` function. Each row is a particular gene measured in the study (i.e. all genes in the organism being studied) and each column reports some aspect of the differential expression analysis for that gene. Note that **all genes** are reported. At this stage the gene identifiers are not very informative, something we will fix in the next section. 
 
 ```{r}
 results(de_cellType)
@@ -235,7 +228,7 @@ It is also a good idea to save the results object itself so we can re-use later.
 
 ```{r}
 saveRDS(results_cellType, file="Robjects/results_cellType.rds")
-saveRDS(dds, file="Robjects/dds.rds")
+
 ```
 
 
@@ -244,11 +237,12 @@ saveRDS(dds, file="Robjects/dds.rds")
 <div class="exercise">
 - Re-run the analysis to find differentially-expressed genes between the developmental stages *virgin* and *lactation*
 - Write a csv file that contains results for the genes that have a p-value less than 0.05 and a log2 fold change more than 1, or less than -1.
-- HINT: So that we don't overwrite our results so far, it may be convenient to create a new `DESeqDataSet` object for the new differential expression analysis.
+- HINT: So that we don't overwrite our results so far, it may be convenient to create a new `DESeqDataSet` object for the new differential expression analysis. Check the `colData` to see which analyses can be made
 
 ```{r eval=FALSE}
 dds_status <- dds
-design(dds_status) <- ......
+colData(dds)
+design(dds_status) <- ~......
 ```
 
 </div>
@@ -269,16 +263,25 @@ results(de_cellType, contrast=c("CellType","basal","luminal"))
 
 ```
 
-If we change to performing differential expression analysis on the `Status` variable then there are various contrasts that can be made; `pregnant` vs `lactation`, `lactation` vs `virgin` etc. When the `results` function is run the table that is displayed is for the contrast `virgin vs lactate`. The `resultsNames` function can tell us which other contrasts we can access.
+If we change to performing differential expression analysis on the `Status` variable then there are various contrasts that can be made; `pregnant` vs `lactation`, `lactation` vs `virgin` etc. When the `results` function is run, the table that is displayed is for the contrast `virgin vs lactate`. The `resultsNames` function can tell us which other contrasts we can access.
+
+For a factor with more than 2 groups, the `contrast` argument can be used to change the output. Lets say we have a factor with groups `A`, `B` and `C`:-
+
+```{r eval=FALSE}
+## this code won't run. it's just an example
+
+## print results of comparing A to B
+results(de_object, contrast = c("Group", "A","B"))
+
+## print results of comparing A to C
+results(de_object, contrast = c("Group", "A","C"))
+
+## print results of comparing B to C
+results(de_object, contrast = c("Group", "B","C"))
 
 
-```{r}
-dds_status <- dds
-design(dds_status) <- ~Status
-de_status <- DESeq(dds_status)
-resultsNames(de_status)
-results_status <- data.frame(results(de_status))
 ```
+
 
 # Intersecting gene lists
 
@@ -287,6 +290,14 @@ A venn diagram is a common way of visualising the overlap between two genelists.
 The following shows a (not particularly meaningful) example.
 
 ```{r message=FALSE}
+dds_status <- dds
+dds_status$Status <- as.factor(dds$Status)
+design(dds_status) <- ~Status
+de_status <- DESeq(dds_status)
+results_status <- results(de_status) %>%
+  as.data.frame %>% 
+  rownames_to_column("ENSEMBL")  
+
 venn_data <- data.frame(CellType = results_cellType$padj<0.05,
                         Status = results_status$padj < 0.05)
 library(limma)
@@ -305,24 +316,25 @@ vennDiagram(venn_data)
 
 # Analysing a subset of the data
 
+From our initial inspection of the data we observed a large difference between `basal` and `luminal` cell types (greater than the variability between development stages). Therefore we try and compare differences in `Status` some of the biological variation could be masked by the differences in `CellType`.
+
+One way around this would be to create different subsets for each `CellType` and analyse separately. `DESeq2` allows the dataset to be subset uses conventions that are consistent with base R data frames.
+
 ```{r}
+## create subset corresponding to just basal samples
 dds_basal <- dds[,which(dds$CellType == "basal")]
 design(dds_basal) <- ~Status
+## perform analysis
 de_basal <- DESeq(dds_basal)
 ```
 
 ```{r}
+## create subset corresponding to just luminal samples
 dds_luminal <- dds[,which(dds$CellType == "luminal")]
 design(dds_luminal) <- ~Status
 de_luminal <- DESeq(dds_luminal)
 ```
 
-```{r}
-venn_data <- data.frame(Basal = results(de_basal)$padj < 0.05, Luminal  = results(de_luminal)$padj<0.05)
-
-limma::vennDiagram(venn_data)
-
-```
 
 
 # Fitting alternative models to the data
@@ -343,10 +355,6 @@ results_mf
 ```
 
 
-### Saving the results
-
-
-
 ### Exporting normalized counts
 
 The `DESeq` workflow applies *median of ratios normalization* that accounts for differences in sequencing depth between samples. The user does not usually need to run this step. However, if you want a matrix of counts for some application outside of Bioconductor the values can be extracted from the `dds` object.
@@ -364,8 +372,8 @@ write.csv(countMatrix,file="normalized_counts.csv")
 
 <div class="exercise">
 
-- Add a differential expression section to your report
-- How many differentially expressed genes are found with adjusted p-value less than 0.05 and absolute log fold-change > 1 in the *multi-factor* analysis? How does this compare to the number of genes detected in the workshop exercise?
+- Make a venn diagram for genes with adjusted p-value less than 0.05 in the basal and luminal subsets. How many genes overlap?
+- How many differentially expressed genes are found with adjusted p-value less than 0.05 in the *multi-factor* analysis? How does this compare to the number of genes in the venn diagram?
 - You may have noticed that some genes in the `DESeq2` output have `NA` values for p-value. Why is this? Check the "Frequently asked questions" section of the DESeq2 manual to find out. Is there an argument in the `results` function to disable this behaviour?
 
 </div>
