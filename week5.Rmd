@@ -20,7 +20,7 @@ library(dplyr)
 # Learning outcomes
 
 - Using annotation databases to map between gene identifers
-- Construction and interpretation of common visualisations
+- Construction and interpretation of common visualisations for RNA-seq
     + scatter plots
     + volcano plots
     + MA-plots 
@@ -31,7 +31,6 @@ We can now have a list of genes ordered according to their evidence for being di
 
 ```{r}
 results_cellType <- readRDS("Robjects/results_cellType.rds")
-results_ordered <- arrange(results_cellType, padj)
 ```
 
 We would love to share this list with our collaborators, or search for our favourite gene amongst the results. However, the results are not very useful in there current form as each row is named according to an *Ensembl* identifier. Whilst gene symbols are problematic and can change over time, they are the names that are most recognisable and make the results easier to navigate.
@@ -130,7 +129,8 @@ dim(anno)
 We can bind in the annotation information to the `results` data frame. 
 
 ```{r}
-results_annotated <- left_join(results_ordered, anno,by="ENSEMBL")
+results_annotated <- left_join(results_cellType, anno,by="ENSEMBL") %>% 
+  arrange(padj)
 head(results_annotated)
 ```
 
@@ -146,6 +146,8 @@ saveRDS(results_annotated, file="Robjects/results_cellType_annotated.rds")
 ```
 
 
+# Visualisation
+
 A useful sanity check is to examine the counts of reads for a single gene across the groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a pseudocount of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
 
 ```{r}
@@ -154,23 +156,17 @@ dds <- readRDS("Robjects/dds.rds")
 plotCounts(dds, "ENSMUSG00000027750",intgroup = "CellType")
 ```
 
-If we want greater control over how to visualise the data, we can use the `plotCounts` function to return the count data, but not actually produce the plot:-
-
-```{r}
-plotCounts(dds, "ENSMUSG00000027750",intgroup = "CellType",returnData=TRUE)
-```
 
 ## Exercise
 
 <div class="exercise">
 
-- Use the option `returnData=TRUE` (as above) to get a data frame containing the counts of `ENSMUSG00000027750` in the different development stages. Visualise these data using `ggplot2`. 
-    + HINT: To get the counts on the same scale as displayed by the plotCounts function you will need to add `+scale_y_log10` in your ggplot2 code
-
+- Use `plotCounts` with the option `returnData=TRUE`  to get a data frame containing the counts of `ENSMUSG00000027750` in the different cell types. Visualise these data using `ggplot2`. 
+    + HINT: To get the counts on the same scale as displayed by the plotCounts function you will need to add adjust the scale on the y-axis 
 </div>
 
 
-# Visualisation
+
 
 Now we have annotated our results, we can start to explore some common visualisation techniques
 
@@ -186,6 +182,8 @@ results_annotated %>%
   ggplot(aes(x = log2FoldChange, y = -log10(padj))) + geom_point()
 ```
 
+
+One modification is to colour the points according to whether each gene is significant in the analysis. This is achieved by mapping the `col` aesthetic to a column in the table.
 
 ```{r}
 results_annotated %>% 
@@ -228,13 +226,18 @@ results_annotated %>%
 
 ## Heatmaps
 
-We have already seen the use of a heatmap as a quality assessment tool to visualise the relationship between samples in an experiment. Another common use-case for such a plot is to visualise the results of a differential expression analysis.
+You may have already seen the use of a heatmap as a quality assessment tool to visualise the relationship between samples in an experiment. Another common use-case for such a plot is to visualise the results of a differential expression analysis.
 
-Here we will take the top 10 genes from the differential expression analysis and produce a heatmap with the `pheatmap` package. The default colour palette goes from low expression in blue to high expression in red, which is a good alternative to the traditional red/green heatmaps which are not suitable for those with forms of colour-blindness.
+Here we will take the top 10 genes from the differential expression analysis and produce a heatmap with the `pheatmap` package. We can take advantage of the fact the our counts table contains Ensembl gene names in the rows. Standard subset operations in R can then be used.
+
+The default colour palette goes from low expression in blue to high expression in red, which is a good alternative to the traditional red/green heatmaps which are not suitable for those with forms of colour-blindness.
 
 The counts we are visualising are the *variance-stablised* counts, which are more appropriate for visualisation.
 
+Although `ggplot2` has a `geom_tile` function to make heatmaps, specialised packages such as `pheatmaps` offer more functionality such as clustering the samples.
+
 ```{r}
+# pheatmap is a specialised package to make heatmaps
 library(pheatmap)
 top_genes <- results_annotated$ENSEMBL[1:10]
 vsd <- vst(dds)
@@ -265,10 +268,10 @@ pheatmap(assay(vsd)[top_genes,],
 
 
 - Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes **between lactation and virgin**
-- Change the plot so that gene names are displayed rather than Ensembl IDs
+    + Load your `de_status.rds` file from last week. If you don't have one, [click here]()
+    + Extract the results and convert to a data frame
+    + Re-arrange by adjusted p-value and join with the annotation table from `org.Mm.eg.db`
 - Save the plot to a pdf file
-    + HINT: check the help for the `pheatmap` function to see how column and row labels can be changed
-
 
 </div>
 
@@ -309,7 +312,7 @@ listAttributes(ensembl) %>%
 An advantage over the `org..` packages is that positional information can be retrieved
 
 ```{r}
-attributeNames <- c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name')
+attributeNames <- c('ensembl_gene_id', 'entrezgene_id', 'external_gene_name', "chromosome_name","start_position","end_position")
 
 getBM(attributes = attributeNames,
       filters = "ensembl_gene_id",
@@ -317,21 +320,15 @@ getBM(attributes = attributeNames,
       mart=ensembl)
 ```
 
-> ## Challenge 3{.challenge}
-> 1. Use biomaRt to create an data frame containing the entrezgene, gene symbol and genomic coordinates (chromosome, start, end) for the Ensembl IDs in the DESeq2 results
-> 2. Remove duplicates entries from the new data frame
-> 3. Join the biomaRt annotation to the DESeq2 results to produce a data frame with differential expression results and annotation
-> 4. Write the joined data frame to a csv file
-
-
 # Exercise for next time
 
 <div class="exercise">
 - When visualising the expression of `ENSMUSG00000000381` we can also observe an effect of `CellType` on the expression level. 
 ```{r}
-plotCounts(dds, "ENSMUSG00000000381",intgroup = "Status")
+dds$Status <- as.factor(dds$Status)
+plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData=TRUE)
 ```
-- Modify the code producing the plot so that the points on the plot can be separated by `CellType` and `Status`. You will need to look at the options for `plotCounts`.
-- What does the `scale` argument in `pheatmap` do? Why might you want to scale by rows? Repeat one of your heatmaps, but scale the rows. What do you notice?
+- Modify the code producing the plot so that the points on the plot can be identified by `CellType` and `Status` (e.g using different colours and shapes or a facet). You will need to look at the options for `plotCounts`.
+
 
 </div>
