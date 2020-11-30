@@ -93,7 +93,7 @@ AnnotationDbi::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL
 To annotate our results, we definitely want gene symbols and perhaps the full gene name. Let's build up our annotation information into a new data frame using the `select` function.
 
 ```{r}
-anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results_ordered$ENSEMBL,
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results_cellType$ENSEMBL,
               columns=c("SYMBOL","GENENAME"),
               keytype="ENSEMBL")
 # Have a look at the annotation
@@ -104,7 +104,7 @@ However, we have a problem that the resulting data frame has more rows than our 
 
 ```{r}
 dim(anno)
-dim(results_ordered)
+dim(results_cellType)
 ```
 
 Such duplicated entries can be identified using the `duplicated` function. 
@@ -115,10 +115,10 @@ filter(anno, ENSEMBL %in% dup_ids) %>%
   arrange(ENSEMBL) %>% head
 ```
 
-Fortunately, there are not too many so hopefully we won't lose too much information if we discard the entries that are duplicated. The first occurence of the duplicated ID will still be included in the table.
+Fortunately, there are not too many so hopefully we won't lose too much information if we discard the entries that are duplicated. The first occurrence of the duplicated ID will still be included in the table.
 
 ```{r}
-anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results_ordered$ENSEMBL,
+anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results_status$ENSEMBL,
               columns=c("ENSEMBL","SYMBOL","GENENAME","ENTREZID"),
               keytype="ENSEMBL") %>% 
   filter(!duplicated(ENSEMBL))
@@ -139,20 +139,23 @@ We can save the results table using the `write.csv` function, which writes the r
 
 ```{r}
 write.csv(results_annotated,file="cellType_DESeq_annotated.csv",row.names=FALSE)
-```
-
-```{r}
 saveRDS(results_annotated, file="Robjects/results_cellType_annotated.rds")
 ```
 
 
 # Visualisation
 
-A useful sanity check is to examine the counts of reads for a single gene across the groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a pseudocount of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
+Now we have annotated our results, we can start to explore some common visualisation techniques.
+
+A useful sanity check is to examine the counts for a single gene across biological groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a "pseudocount" of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
+
+As the results table no longer contains read counts, we will have to load these from a previous object.
 
 ```{r}
 library(DESeq2)
+## Read the counts that we produced previously
 dds <- readRDS("Robjects/dds.rds")
+
 plotCounts(dds, "ENSMUSG00000027750",intgroup = "CellType")
 ```
 
@@ -161,14 +164,11 @@ plotCounts(dds, "ENSMUSG00000027750",intgroup = "CellType")
 
 <div class="exercise">
 
-- Use `plotCounts` with the option `returnData=TRUE`  to get a data frame containing the counts of `ENSMUSG00000027750` in the different cell types. Visualise these data using `ggplot2`. 
+- Use `plotCounts` with the option `returnData=TRUE`  to get a data frame containing the counts of `ENSMUSG00000027750` in the different cell types. Visualise these data using `ggplot2` and colour the samples appropriately
     + HINT: To get the counts on the same scale as displayed by the plotCounts function you will need to add adjust the scale on the y-axis 
 </div>
 
 
-
-
-Now we have annotated our results, we can start to explore some common visualisation techniques
 
 ## The Volcano Plot
 
@@ -183,7 +183,7 @@ results_annotated %>%
 ```
 
 
-One modification is to colour the points according to whether each gene is significant in the analysis. This is achieved by mapping the `col` aesthetic to a column in the table.
+One modification is to colour the points according to whether each gene is significant in the analysis. The indicator of significance can be a new column in the data frame that we create on-the-fly using the pipe operator.
 
 ```{r}
 results_annotated %>% 
@@ -268,12 +268,13 @@ pheatmap(assay(vsd)[top_genes,],
 
 
 - Repeat the same heatmap as above, but for the top 100 most differentially-expressed genes **between lactation and virgin**
-    + Load your `de_status.rds` file from last week. If you don't have one, [click here]()
-    + Extract the results and convert to a data frame
+    + Load your `de_status.rds` file from last week. If you don't have one, [click here to download one](Robjects/results_status.rds)
     + Re-arrange by adjusted p-value and join with the annotation table from `org.Mm.eg.db`
+    + identify the top 100 genes by p-value and create the heatmap
 - Save the plot to a pdf file
 
 </div>
+
 
 
 
@@ -326,9 +327,10 @@ getBM(attributes = attributeNames,
 - When visualising the expression of `ENSMUSG00000000381` we can also observe an effect of `CellType` on the expression level. 
 ```{r}
 dds$Status <- as.factor(dds$Status)
-plotCounts(dds, "ENSMUSG00000000381",intgroup = c("Status","CellType"),returnData=TRUE)
+plotCounts(dds, "ENSMUSG00000000381",intgroup = "Status")
 ```
-- Modify the code producing the plot so that the points on the plot can be identified by `CellType` and `Status` (e.g using different colours and shapes or a facet). You will need to look at the options for `plotCounts`.
+- Modify the code producing the plot so that the points on the plot can be identified by `CellType` and `Status` (e.g using different colours and shapes or a facet). You will need to look at the options for `plotCounts` and how to specify multiple groups in `intgroup`.
+- Suppose we are interested in the Gene Ontology term "mitotic cell cycle arrest" - `GO:0071850`. What genes belong to this pathway in Mouse? Find out the `ENSEMBL` IDs for these genes are make a heatmap. Does it look like genes in this pathway are differentially-expressed between cell types?
 
 
 </div>
