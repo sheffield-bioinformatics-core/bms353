@@ -375,8 +375,8 @@ write.csv(countMatrix,file="normalized_counts.csv")
 
 <div class="exercise">
 
-- Make a venn diagram for genes with adjusted p-value less than 0.05 in the basal and luminal subsets. How many genes overlap?
-- How many differentially expressed genes are found with adjusted p-value less than 0.05 in the *multi-factor* analysis? How does this compare to the number of genes in the venn diagram?
+- Make a venn diagram for genes with adjusted p-value less than 0.05 in the basal (`de_basal`) and luminal (`de_luminal`) subsets. How many genes overlap?
+- How many differentially expressed genes are found with adjusted p-value less than 0.05 in the *multi-factor* analysis? How does this compare to the number of genes in the venn diagram? What do you think is the best way to analyse these data?
 - You may have noticed that some genes in the `DESeq2` output have `NA` values for p-value. Why is this? Check the "Frequently asked questions" section of the DESeq2 manual to find out. Is there an argument in the `results` function to disable this behaviour?
 
 </div>
