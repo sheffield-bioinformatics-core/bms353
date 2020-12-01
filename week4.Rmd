@@ -65,7 +65,7 @@ dds <- DESeqDataSetFromTximport(txi,
 It would be a good idea to save the results of the pre-processing so we don't have to repeat it every time.
 
 ```{r}
-dir.create("Robjects/dds.rds",showWarnings = FALSE)
+dir.create("Robjects/",showWarnings = FALSE)
 saveRDS(dds, file="Robjects/dds.rds")
 ```
 
@@ -323,6 +323,7 @@ One way around this would be to create different subsets for each `CellType` and
 ```{r}
 ## create subset corresponding to just basal samples
 dds_basal <- dds[,which(dds$CellType == "basal")]
+dds_basal$Status <- as.factor(dds_basal$Status)
 design(dds_basal) <- ~Status
 ## perform analysis
 de_basal <- DESeq(dds_basal)
@@ -331,6 +332,7 @@ de_basal <- DESeq(dds_basal)
 ```{r}
 ## create subset corresponding to just luminal samples
 dds_luminal <- dds[,which(dds$CellType == "luminal")]
+dds_luminal$Status <- as.factor(dds_luminal$Status)
 design(dds_luminal) <- ~Status
 de_luminal <- DESeq(dds_luminal)
 ```
