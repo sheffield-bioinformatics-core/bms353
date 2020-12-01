@@ -39,7 +39,7 @@ We can use `dplyr` to transform into a more manageable data frame
 ```{r}
 library(dplyr)
 library(tibble)
-results_cellType <- results(de_cellType) %>%
+results_cellType <- results(de_status) %>%
   as.data.frame %>% 
   rownames_to_column("ENSEMBL")  
 
@@ -67,6 +67,7 @@ results_status <- results(de_status) %>%
   rownames_to_column("ENSEMBL")  
 
 results_status
+saveRDS(results_status,"Robjects/results_status.rds")
 ```
 
 We can filter to discover differentially-expressed genes and write out to a file
