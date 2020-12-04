@@ -65,7 +65,7 @@ dds <- DESeqDataSetFromTximport(txi,
 It would be a good idea to save the results of the pre-processing so we don't have to repeat it every time.
 
 ```{r}
-dir.create("Robjects/dds.rds",showWarnings = FALSE)
+dir.create("Robjects/",showWarnings = FALSE)
 saveRDS(dds, file="Robjects/dds.rds")
 ```
 
@@ -323,6 +323,7 @@ One way around this would be to create different subsets for each `CellType` and
 ```{r}
 ## create subset corresponding to just basal samples
 dds_basal <- dds[,which(dds$CellType == "basal")]
+dds_basal$Status <- as.factor(dds_basal$Status)
 design(dds_basal) <- ~Status
 ## perform analysis
 de_basal <- DESeq(dds_basal)
@@ -331,6 +332,7 @@ de_basal <- DESeq(dds_basal)
 ```{r}
 ## create subset corresponding to just luminal samples
 dds_luminal <- dds[,which(dds$CellType == "luminal")]
+dds_luminal$Status <- as.factor(dds_luminal$Status)
 design(dds_luminal) <- ~Status
 de_luminal <- DESeq(dds_luminal)
 ```
@@ -347,6 +349,7 @@ Lets suppose that we wanted the different between virgin and lactating individua
 
 ```{r}
 dds_mf <- dds
+dds_mf$Status <- as.factor(dds_mf$Status)
 design(dds_mf) <- ~CellType+Status
 de_mf <- DESeq(dds_mf)
 results_mf <- results(de_mf,contrast=c("Status","virgin","lactation"
@@ -372,8 +375,8 @@ write.csv(countMatrix,file="normalized_counts.csv")
 
 <div class="exercise">
 
-- Make a venn diagram for genes with adjusted p-value less than 0.05 in the basal and luminal subsets. How many genes overlap?
-- How many differentially expressed genes are found with adjusted p-value less than 0.05 in the *multi-factor* analysis? How does this compare to the number of genes in the venn diagram?
+- Make a venn diagram for genes with adjusted p-value less than 0.05 in the basal (`de_basal`) and luminal (`de_luminal`) subsets. How many genes overlap?
+- How many differentially expressed genes are found with adjusted p-value less than 0.05 in the *multi-factor* analysis? How does this compare to the number of genes in the venn diagram? What do you think is the best way to analyse these data?
 - You may have noticed that some genes in the `DESeq2` output have `NA` values for p-value. Why is this? Check the "Frequently asked questions" section of the DESeq2 manual to find out. Is there an argument in the `results` function to disable this behaviour?
 
 </div>

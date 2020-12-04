@@ -121,7 +121,8 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 - [html](week3.nb.html)
 - [markdown](week3.Rmd)
-
+- [solutions - Rmd](solutions/week3.Rmd)
+- [solutions - HTML](solutions/week3.nb.html)
 
 # Week 4 - Differential Expression for RNA-seq
 
@@ -138,10 +139,9 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 ## Materials
 
-<!--
 - [html](week4.nb.html)
 - [markdown](week4.Rmd)
--->
+
 
 
 # Week 5 - Visualisation methods for RNA-seq data
