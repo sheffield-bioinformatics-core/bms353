@@ -1,0 +1,190 @@
+---
+title: "BMS353 Week 6"
+author: "Mark Dunning"
+date: "November 2020"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(ggthemr)
+uos_pal <- function(){
+  uos_pal <- c("Process_Cyan"=rgb(0,159,218,maxColorValue = 255),
+               "Pantone_274"=rgb(31,20,93,maxColorValue = 255),
+               "Process_Yellow"=rgb(249,227,0,maxColorValue = 255),
+               
+               "Pantone_347"=rgb(0,155,72,maxColorValue = 255),
+               "Pantone_382"=rgb(190,214,0,maxColorValue = 255),
+               "Process_Magenta"=rgb(209,0,116,maxColorValue = 255),
+               "Pantone_Orange_021"=rgb(255,88,0,maxColorValue = 255),
+               
+               "Pantone_512"=rgb(119,33,111,maxColorValue = 255),
+               "Pantone_485"=rgb(213,43,30,maxColorValue = 255),
+               "Pantone_Black"=rgb(30,30,30,maxColorValue = 255),
+               "Pantone_161"=rgb(98,60,27,maxColorValue = 255),
+               
+               "Pantone_7501"=rgb(219,206,172,maxColorValue = 255),
+               "Pantone_343"=rgb(3,86,66,maxColorValue = 255),
+               "Pantone_322"=rgb(0,116,122,maxColorValue = 255),
+               "Pantone_202"=rgb(130,36,51,maxColorValue = 255)
+  )
+  
+  uos_pal
+}
+
+uos_colours <- as.character(uos_pal())
+# you have to add a colour at the start of your palette for outlining boxes, we'll use a grey:
+uos_colours <- c("#555555", uos_colours)
+# remove previous effects:
+
+ggthemr_reset()
+# Define colours for your figures with define_palette
+uos <- define_palette(
+  swatch = uos_colours, # colours for plotting points and bars
+  gradient = c(lower = uos_colours[1L], upper = uos_colours[2L]), #upper and lower colours for continuous colours
+  background = "white" #defining a grey-ish background 
+)
+# set the theme for your figures:
+ggthemr(uos)
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+suppressPackageStartupMessages(library(DESeq2))
+suppressPackageStartupMessages(library(ggrepel))
+dds <- makeExampleDESeqDataSet()
+```
+
+## Week 5 Recap
+
+- Adding extra annotation to differential expression results
+  - Bioconductor packages
+  - biomaRt
+- Visualisations to help interogate results
+  - heatmaps
+  - volcano plots
+
+
+
+## Week 6 Overview
+
+- Towards biological interpretation
+- What pathways or biological processes explain the gene list
+- Two types of test
+  - Apply significance cut-off to the results
+  - Rank the gene list
+- Overview of assignment
+
+## So you've got your gene list: what now?
+
+- We have used an annotation resource to convert our IDs to something more meanginful
+- Useful if we have a particular positive of negative control
+  + e.g. a gene that has been knocked-out
+  + genes know from the literature
+
+```{r}
+library(dplyr)
+results_annotated <- readRDS("../Robjects/results_cellType_annotated.rds")
+results_annotated %>% 
+  dplyr::select(ENSEMBL,padj,SYMBOL) %>% 
+  head(5)
+```
+
+## So you've got your gene list: what now?
+
+- The same resource can be used to obtain membership of *gene ontologies*
+  + collection of genes that share biological function
+- There are lots of pathways identified, so we need a statistical test to determine if any occur more often than we expect.
+
+```{r message=FALSE}
+library(org.Mm.eg.db)
+anno <- AnnotationDbi::select(org.Mm.eg.db, keys = results_annotated$ENSEMBL, keytype = "ENSEMBL",columns="GO")
+results_annotated %>% 
+  left_join(anno) %>% 
+  dplyr::select(ENSEMBL,padj,SYMBOL,GO) %>% 
+  group_by(ENSEMBL) %>% 
+  mutate(GO = paste(GO,collapse=",")) %>% 
+  dplyr::select(-ENSEMBL) %>% 
+  distinct %>% 
+  head(5)
+
+```
+
+## Testing for Significance
+
+- We can count up how many times each pathway is seen
+- But this can be deceiving
+  + not all pathways are of equal size (from a few genes to a few thousand)
+- If the gene list were random, with no biological significance, we would still get a particular distribution of pathways
+
+
+```{r}
+de_genes <- results_annotated %>% 
+  filter(padj < 0.05, abs(log2FoldChange) > 1)
+de_GO <- AnnotationDbi::select(org.Mm.eg.db, keys = de_genes$ENSEMBL,
+                      keytype = "ENSEMBL",
+                      columns = "GO")
+dplyr::count(de_GO, GO) %>% 
+  arrange(desc(n))
+```
+## Testing for Significance
+
+- Aim is to compare number of differentially-expressed genes for each pathway - to how many we expect by chance
+- This can be done using a *Fisher's exact test* or chi-squared test (R will take care of this for us)
+  + $$ p = \frac{\binom{a + b}{a}\binom{c +d}{c}}{\binom{n}{a +c}} = \frac{(a+b)!(c+d)!(a+c)!(b+d)!}{a!b!c!d!n!} $$
+- Result is p-value for *each pathway*
+
+```{r}
+df <- data.frame(`In DE List`  = c("a","c","a+c"), `Not in DE list` = c("b","d","b+d"), RowTotal = c("a +b","c+d","a+b+c+d (=n)"))
+rownames(df) <- c("In Gene Set", "Not in Gene Set","Column Total")
+df
+```
+
+
+## Alternative approach
+
+- All of the above assumes we impose a threshold on our data
+- Are genes with p-value 0.051 any less significant? Or genes with log-fold change 0.99?
+- What happens if we don't get any, or very few, genes?
+- An alternative approach exists that takes information from *all genes*
+
+## The GSEA method
+
+- The Gene Set Enrichment Analysis (GSEA) tool created by the Broad Institute can be used in such circumstances
+- No threshold are required, but the results must be ranked by a criteria with directionality such as log fold-change
+- Seeks to identify pathways with a tendency to be at top or bottom of ranked gene list
+
+## The GSEA method
+
+- For each gene set in turn, walk-down the gene list and record every time a gene belonging to that pathway is seen
+- For a *down-regulated* gene set, the genes belonging to it would be concentrated towards the *bottom* of the gene list
+
+```{r}
+suppressPackageStartupMessages(library(limma))
+stat <- sort(rnorm(100))
+sel <- c(35,50,sample(1:20, 5))
+barcodeplot(stat, index = sel, main="Down-regulated Gene Set")
+
+```
+
+## The GSEA method
+
+- For an *up-regulated* gene set, the genes belonging to it would be concentrated towards the *top* of the gene list
+
+```{r}
+sel2 <- c(45,60, sample(80:100,7))
+barcodeplot(stat, index = sel2, main="Up-regulated Gene Set")
+```
+
+## The GSEA method
+
+
+
+```{r}
+sel3 <- sample(1:100, 9)
+barcodeplot(stat, index = sel3, main="Neither up- or down-regulated")
+```
+
+
+## Assignment Overview
+
+## Further Viewing
+

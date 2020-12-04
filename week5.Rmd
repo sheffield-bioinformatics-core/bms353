@@ -27,13 +27,13 @@ library(dplyr)
     + heatmaps
 - Customisation of plots
 
-We can now have a list of genes ordered according to their evidence for being differentially-expressed.
+We can now have a list of genes ordered according to their evidence for being differentially-expressed. You should have saved a `results_cellType.rds` object in the previous session. If you don't have it you can download using [this link](Robjects/results_cellType.rds).
 
 ```{r}
 results_cellType <- readRDS("Robjects/results_cellType.rds")
 ```
 
-We would love to share this list with our collaborators, or search for our favourite gene amongst the results. However, the results are not very useful in there current form as each row is named according to an *Ensembl* identifier. Whilst gene symbols are problematic and can change over time, they are the names that are most recognisable and make the results easier to navigate.
+We would love to share this list with our collaborators, or search for our favourite gene in the results. However, the results are not very useful in there current form as each row is named according to an *Ensembl* identifier. Whilst gene symbols are problematic and can change over time, they are the names that are most recognisable and make the results easier to navigate.
 
 # Adding annotation to the DESeq2 results
 
@@ -83,7 +83,7 @@ select(org.Mm.eg.db, keys="ENSMUSG00000027750",
 )
 ```
 
-Unfortunately, the authors of `dplyr` and `AnnotationDbi` have both decided to use the name `select` in their packages. To avoid confusion, the following code is sometimes used:-
+Unfortunately, the authors of `dplyr` and `AnnotationDbi` have both decided to use the name `select` in their packages. To avoid confusion and errors, the following code is sometimes used:-
 
 ```{r}
 AnnotationDbi::select(org.Mm.eg.db, keys="ENSMUSG00000000381",keytype = "ENSEMBL",columns=c("SYMBOL","GENENAME"))
@@ -147,9 +147,9 @@ saveRDS(results_annotated, file="Robjects/results_cellType_annotated.rds")
 
 Now we have annotated our results, we can start to explore some common visualisation techniques.
 
-A useful sanity check is to examine the counts for a single gene across biological groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a "pseudocount" of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
+A useful sanity check is to examine the counts for a single gene across biological groups. A simple function for making this plot is `plotCounts`, which normalizes counts by sequencing depth and adds a "pseudocount" of 1/2 to allow for log scale plotting. The counts are grouped by the variables in  `intgroup`, where more than one variable can be specified. Here we specify the gene which had the smallest p-value from the results table created above. You can select the gene to plot by rowname or by numeric index:-
 
-As the results table no longer contains read counts, we will have to load these from a previous object.
+As the results table no longer contains read counts, we will have to load these from a previous object. [Click here to download if you are missing this](Robjects/dds.rds).
 
 ```{r}
 library(DESeq2)
@@ -283,7 +283,7 @@ pheatmap(assay(vsd)[top_genes,],
 
 The Bioconductor package have the convenience of being able to make queries offline. However, they are only available for certain organisms. If your organism does not have an `org.XX.eg.db` package listed on the Bioconductor annotation page (http://bioconductor.org/packages/release/BiocViews.html#___AnnotationData), an alternative is to use biomaRt which provides an interface to the popular biomart annotation resource. 
 
-The first step is to find the name of a database that you want to connect to
+The first step is to find the name of a database that you want to connect to.
 
 ```{r}
 library(biomaRt)
