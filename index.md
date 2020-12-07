@@ -141,7 +141,8 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 - [html](week4.nb.html)
 - [markdown](week4.Rmd)
-
+- [solutions - Rmd](solutions/week4.Rmd)
+- [solutions - HTML](solutions/week4.nb.html)
 
 
 # Week 5 - Visualisation methods for RNA-seq data
