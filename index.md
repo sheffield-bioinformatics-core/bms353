@@ -158,19 +158,15 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 ## Pre-materials
 
-<!--
 
 - [Drawing and Interpreting Heatmaps](https://youtu.be/oMtDyOn2TCc) - 16 minutes
 - [Useful plots and bad plots](https://youtu.be/46-t2jOYsyY) - 17 minutes
--->
+
 
 ## Materials
 
-<!--
 - [html](week5.nb.html)
 - [markdown](week5.Rmd)
--->
-
 
 # Week 6 - Pathways and further downstream analysis
 
@@ -182,11 +178,10 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 ## Pre-Materials
 
-<!--
+
 - [Introduction to Functional Gene Analysis](https://youtu.be/clb0bh3zFSM) - 12 minutes
 - [Fisher's Exact test](https://youtu.be/udyAvvaMjfM) - 5 minutes
 - [GSEA theory](https://youtu.be/bT00oJh2x_4) - 9 minutes
--->
 
 ## Materials
 
