@@ -141,7 +141,8 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 - [html](week4.nb.html)
 - [markdown](week4.Rmd)
-
+- [solutions - Rmd](solutions/week4.Rmd)
+- [solutions - HTML](solutions/week4.nb.html)
 
 
 # Week 5 - Visualisation methods for RNA-seq data
@@ -177,7 +178,6 @@ Please use the link below to download the example RNA-seq dataset for the course
 - Methodology behind gene set testing and enrichment analysis
 
 ## Pre-Materials
-
 
 - [Introduction to Functional Gene Analysis](https://youtu.be/clb0bh3zFSM) - 12 minutes
 - [Fisher's Exact test](https://youtu.be/udyAvvaMjfM) - 5 minutes
