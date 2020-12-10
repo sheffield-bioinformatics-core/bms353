@@ -275,6 +275,26 @@ This file has one column which lists the genes that passed the threshold for sta
 </div>
 
 
+# Getting Started with your assignment
+
+Upon downloading your data, you should create a new RStudio project inside the same directory.
+
+*File* -> *New Project*
+
+then create a new Markdown file to document your analysis
+
+*File* -> *New File* -> *R markdown*
+
+Use the Knit drop-down menu to create a *Word* document from your analysis. It is advisable to do this often rather than waiting until you have completed your analysis.
+
+The submitted document should contain only text and figures. When creating the Word you will need to set `echo=FALSE, warning=FALSE, message=FALSE` in all the *chunk options*.
+
+See the file [workflow_overview.Rmd](workflow_overview.Rmd) for an example.
+
+Good luck!
+
+# Acknowledgements
+
 **Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
 Based on the course [RNAseq analysis in R](http://combine-australia.github.io/2016-05-11-RNAseq/) delivered on May 11/12th 2016 and modified by Cancer Research Uk Cambridge Centre for the [Functional Genomics Autumn School 2017](https://bioinformatics-core-shared-training.github.io/cruk-autumn-school-2017/)
 

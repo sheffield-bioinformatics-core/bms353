@@ -1,0 +1,88 @@
+---
+title: "Workflow Overview"
+author: "Mark Dunning"
+date: "10/12/2020"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo=FALSE,message=FALSE,warning=FALSE)
+```
+
+# 1. Identify the raw data and import
+
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+library(readr)
+tx2gene <- read_csv("tx2gene.csv")
+sampleinfo <- read.delim("meta_data/sampleInfo.txt")
+```
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+## see help for list.files
+## recursive checks all sub-folders
+## full.names returns the path in addition to the file name
+
+## dirs contain all the sample names
+dirs <- list.files("salmon_quant/")
+quant_files <- list.files("salmon_quant/",pattern="quant.sf.gz",recursive = TRUE,full.names = TRUE)
+
+## Set nicer names
+names(quant_files) <- dirs
+```
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+library(tximport)
+
+# ignoreTxVersion is required to make sure the transcript names match up
+
+txi <- tximport(quant_files,type="salmon",tx2gene = tx2gene,ignoreTxVersion = TRUE)
+```
+
+
+# 2. Quality assessment
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+## Create DESeq2 object
+library(DESeq2)
+dds <- DESeqDataSetFromTximport(txi, 
+                                colData = sampleinfo,
+                                design <- ~CellType)
+```
+
+
+```{r}
+library(dplyr)
+library(ggplot2)
+sampleinfo %>% mutate(MillionsOfReads = colSums(assay(dds))/1e6) %>% 
+  ggplot(aes(x = Name, y = MillionsOfReads)) + geom_col(fill="steelblue")
+```
+
+
+```{r}
+## Use variance-stabilising transformation
+vsd <- vst(dds)
+plotPCA(vsd, intgroup="Status")
+```
+
+
+# 3. Differential expression
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+de <- DESeq(dds)
+results <- results(de) %>%
+  as.data.frame %>% 
+  tibble::rownames_to_column("ENSEMBL")  
+
+head(results)
+```
+
+
+# 4. Pathways
+
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+
+```
+
