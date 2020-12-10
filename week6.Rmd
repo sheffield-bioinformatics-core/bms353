@@ -162,6 +162,8 @@ A dot plot can show us the most enriched pathways, and the size of each.
 dotplot(enrich_go)
 ```
 
+Relationships between the identified categories can be found using `emapplot`.
+
 ```{r}
 emapplot(enrich_go)
 ```
@@ -190,14 +192,14 @@ library(fgsea)
 An appealing feature of the method is that it does not require us to impose arbitrary cut-offs on the dataset to decide what is differentially-expressed or not. The steps in producing the input required for GSEA are i) retrieving the ranked statistics ii) naming each one according to Entrez ID.
 
 ```{r}
-gseaInput <- filter(results_annotated, !is.na(ENTREZID)) %>% 
+gseaInput <- filter(results_annotated, !is.na(ENTREZID), !is.na(stat)) %>% 
   arrange(stat)
 ranks <- pull(gseaInput,stat)
 names(ranks) <- gseaInput$ENTREZID
 ```
 
 
-
+Curated gene lists for mice can be downloaded from WEHI to our `Robjects` folder.
 
 ```{r}
 download.file("http://bioinf.wehi.edu.au/MSigDB/v7.1/Mm.h.all.v7.1.entrez.rds", destfile = "Robjects/Mm.h.all.v7.1.entrez.rds")
@@ -205,7 +207,7 @@ Mm.H <- readRDS("Robjects/Mm.h.all.v7.1.entrez.rds")
 pathways <- Mm.H
 ```
 
-The analysis is one call to the `fgsea` function. We can automatically exclude any pathways with too many or too few genes.
+The analysis is now one call to the `fgsea` function. We can automatically exclude any pathways with too many or too few genes.
 
 ```{r message=FALSE, warning=FALSE}
 library(fgsea)
@@ -264,7 +266,13 @@ This file has one column which lists **all the gene names** present in the analy
 
 This file has one column which lists the genes that passed the threshold for statistical significance (e.g. p-value less than 0.05) in your analysis. Gene Symbols are commonly used, although a tool may accept Ensembl or Refseq names
 
+## Exercise
 
+<div class="exercise">
+- Go to the homepage for GOrilla and review the data required for the running mode with *Two unranked lists of genes*
+  + http://cbl-gorilla.cs.technion.ac.il/
+- Produce the required inputs from your `results_annotated` data frame and run the enrichment analysis
+</div>
 
 
 **Original Authors: Belinda Phipson, Anna Trigos, Matt Ritchie, Maria Doyle, Harriet Dashnow, Charity Law**, **Stephane Ballereau, Oscar Rueda, Ashley Sawle**
