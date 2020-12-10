@@ -31,6 +31,8 @@ There is also a bunch of websites for doing the tests
 
 We previously annotated our differential expression results to include gene names and description. The same annotation packages will also give us the names of the pathway(s) that each gene belongs to.
 
+If you are missing this object, you can download using [this link](Robjects/results_cellType_annotated.rds).
+
 ```{r}
 results_annotated <- readRDS("Robjects/results_cellType_annotated.rds")
 ```
@@ -38,8 +40,11 @@ results_annotated <- readRDS("Robjects/results_cellType_annotated.rds")
 Let's first filter our data to the genes that have statistical significance.
 
 ```{r}
+## We need the dplyr library loaded before we can filter
+library(dplyr)
 de_genes <- results_annotated %>% 
   filter(padj < 0.05, abs(log2FoldChange) > 1)
+de_genes
 ```
 
 The organism package allows us to map between different identifiers
@@ -76,40 +81,55 @@ dplyr::count(de_GO, GO) %>%
 ## Exercise
 
 <div class="exercise">
-- Use the `AnnotationDbi::select` function to find out how many genes exist in total for the GO term `GO:0016020`.
+- Use the `AnnotationDbi::select` function to find the GO terms for all `ENSEMBL` IDs in the `results_annotated` data frame. How many entries are there for `GO:0016020`?
 - What proportion of genes for this term were found to be differentially-expressed?
 - Is this enough information to decide whether the pathway is altered or not? What information are we not taking into account?
 </div>
 
 
-# Gene Set Testing
+# Threshold-based Gene Set Testing
+
+We are now building up our intuition for how threshold-based methods work. For a particular pathway we need to calculate how many genes were identified as differentially-expressed and compare to *how many we would be expect by chance*. Or in other words, if we repeatedly generated a list of differentially-expressed genes at random how many genes from this pathway would be expect to see.
+
+For this particular pathway we can extract all genes as follows:-
 
 ```{r}
+## The pull function from dplyr is used to extract a particular column
+
 pathway_genes <- AnnotationDbi::select(org.Mm.eg.db,
                                        keys = "GO:0016020",
                                        keytype = "GO",
                                        columns="SYMBOL") %>% pull(SYMBOL)
 ```
 
+We can then annotate each gene in our results according to whether it belongs to this pathway, and whether it is differentially-expressed.
 
 ```{r}
 go_table <- mutate(results_annotated, 
                    inPathway = SYMBOL %in% pathway_genes,
                    isDE = padj < 0.05 & abs(log2FoldChange) > 1)
 go_table
+```
+
+Cross-tabulating the two new columns gives a basis for a statistical test
+
+```{r}
 table(go_table$inPathway, go_table$isDE)
 ```
+
+The Fisher's exact test or chi-squared test (as seen here) can then be used
 
 ```{r}
 chisq.test(table(go_table$inPathway, go_table$isDE))
 ```
     
+In reality it would be impractical to test all possible pathways in this manner, so there are a number of Bioconductor packages that automate the process
 
 ## Analysis with clusterProfiler
 
 `clusterProfiler` is another Bioconductor package for over-representation analysis. It's main advantage is that it provides some nice visualisation methods.
 
-Firstly, we can identify over-represented GO terms and visualise these as a network.
+The main function is `enrichGO` which requires the IDs of genes found to be differentially-expressed and the IDs of *all* genes in the dataset.
 
 ```{r message=FALSE, warning=FALSE}
 library(clusterProfiler)
@@ -146,38 +166,7 @@ dotplot(enrich_go)
 emapplot(enrich_go)
 ```
 
-We also perform enrichment of KEGG pathways with the `clusterProfiler` package. To run the analysis we can use the same list of genes as before, and need to know the kegg code for our given organism.
 
-```{r}
-search_kegg_organism('mouse', by='common_name')
-keg_res <- enrichKEGG(gene=sigGenes, organism="mmu")
-```
-
-```{r}
-head(keg_res,n=10)
-```
-
-If we want to view the network for any pathway, we can use the `browseKEGG` function which will take us to the relevant page on the KEGG website.
-
-We will choose an example of a smaller pathway to make things a bit clearer.
-
-```{r}
-browseKEGG(keg_res, 'mmu00190')
-```
-
-The `pathview` package will produce a version of this plot (`png`) in your working directory.
-
-```{r}
-library(pathview)
-logFC <- results_annotated$log2FoldChange
-names(logFC) <- results_annotated$ENTREZID
-
-pathview(gene.data = logFC, 
-         pathway.id = "mmu00190", 
-         species = "mmu", 
-         limit = list(gene=5, cpd=1))
-```    
-    
 
 # fgsea analysis
 
@@ -189,26 +178,18 @@ The GSEA analysis is performed by:
 - (ii) identifying the rank positions of all members of the gene set, and 
 - (iii) calculating an enrichment score (ES) that represents the difference between the observed rankings and that which would be expected assuming a random rank distribution.
 
-> "After establishing the ES for each gene set across the phenotype, GSEA reiteratively randomizes the sample labels and retests for enrichment across the random classes. By performing repeated class label randomizations, the ES for each gene set across the true classes can be compared to the ES distribution from the random classes. Those gene sets that significantly outperform iterative random class permutations are considered significant." 
-
 The article describing the original software is available [here](http://www.pnas.org/content/102/43/15545.long) and there is also a [commentary on GSEA](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC1266131/). 
 
-In addition to the GSEA software the Broad also provide a number of very well curated gene sets for testing against your data - the Molecular Signatures Database (MSigDB). Unfortunately, these are collections of human genes. However, these lists have been translated to mouse equivalents by the Walter+Eliza Hall Institutes Bioinformatics service and made avaialble for download. These gene sets use *Entrez ID* as their identifier.
+In addition to the GSEA software the Broad also provide a number of very well curated gene sets for testing against your data - the Molecular Signatures Database (MSigDB). Unfortunately, these are collections of human genes. However, these lists have been translated to mouse equivalents by the Walter+Eliza Hall Institute's Bioinformatics service and made available for download. These gene sets use *Entrez ID* as their identifier.
 
 ```{r}
 library(fgsea)
 ```
 
 
-```{r}
-results_annotated <- readRDS("Robjects/results_cellType_annotated.rds")
-head(results_annotated)
-```
-
 An appealing feature of the method is that it does not require us to impose arbitrary cut-offs on the dataset to decide what is differentially-expressed or not. The steps in producing the input required for GSEA are i) retrieving the ranked statistics ii) naming each one according to Entrez ID.
 
 ```{r}
-library(dplyr)
 gseaInput <- filter(results_annotated, !is.na(ENTREZID)) %>% 
   arrange(stat)
 ranks <- pull(gseaInput,stat)
@@ -216,7 +197,7 @@ names(ranks) <- gseaInput$ENTREZID
 ```
 
 
-The Walter+Eliza Hall Institutes Bioinformatics service have made mouse versions of the MSigDB datasets available for download. This should already be available in the `Robjects` folder.
+
 
 ```{r}
 download.file("http://bioinf.wehi.edu.au/MSigDB/v7.1/Mm.h.all.v7.1.entrez.rds", destfile = "Robjects/Mm.h.all.v7.1.entrez.rds")
@@ -263,33 +244,6 @@ Here we show the enrichment plot for the pathway with the most positive enrichme
 plotEnrichment(pathways[["HALLMARK_OXIDATIVE_PHOSPHORYLATION"]],
                ranks)
 ```
-
-> ## Challenge 1{.challenge}
-> 1. What pathway has the most extreme negative enrichment score? How can you identify this pathway from the results table?
-> 2. Make the enrichment plot for this pathway
-
-### Visualising pathways using a heatmap
-
-The names of genes involved in particular pathways can be extracted from the `pathways` object. We can then use these genes to make a heatmap, or other visualisation, to show how these genes partition the dataset.
-
-```{r}
-### Load the dds object if not present
-dds <- readRDS("Robjects/dds.rds")
-library(pheatmap)
-my_genes <- filter(results_annotated, ENTREZID %in% pathways[["HALLMARK_MYC_TARGETS_V2"]]) %>% 
-  pull(ENSEMBL)
-
-vsd <- vst(dds)
-mat <- assay(vsd)[my_genes,]
-
-dim(mat)
-rownames(sampleinfo) <- sampleinfo$run
-
-pheatmap(mat,
-         annotation_col = sampleinfo[,c("Status","CellType")],
-         scale="row")
-```
-
 
 
 # Creating Gene lists to use with an online tool
