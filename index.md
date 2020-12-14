@@ -168,6 +168,9 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 - [html](week5.nb.html)
 - [markdown](week5.Rmd)
+- [solutions - Rmd](solutions/week5.Rmd)
+- [solutions - HTML](solutions/week5.nb.html)
+
 
 # Week 6 - Pathways and further downstream analysis
 
@@ -185,8 +188,6 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 ## Materials
 
-<!--
 - [html](week6.nb.html)
 - [markdown](week6.Rmd)
 
--->
