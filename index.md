@@ -190,4 +190,4 @@ Please use the link below to download the example RNA-seq dataset for the course
 
 - [html](week6.nb.html)
 - [markdown](week6.Rmd)
-
+- [Workflow overview](workflow_overview.Rmd)
