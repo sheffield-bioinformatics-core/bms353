@@ -17,7 +17,7 @@ knitr::opts_chunk$set(echo=FALSE,message=FALSE,warning=FALSE)
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
 library(readr)
 tx2gene <- read_csv("tx2gene.csv")
-sampleinfo <- read.delim("meta_data/sampleInfo.txt")
+sampleinfo <- read.delim("meta_data/sampleInfo_corrected.txt")
 ```
 
 ```{r echo=FALSE,message=FALSE,warning=FALSE}
@@ -79,10 +79,109 @@ results <- results(de) %>%
 head(results)
 ```
 
+```{r echo=FALSE,message=FALSE,warning=FALSE}
+## First use the org.Mm.eg.db to map the ENSEMBL IDS to something useful
+library(org.Mm.eg.db)
+
+  anno <- AnnotationDbi::select(org.Mm.eg.db,keys=results$ENSEMBL,
+              columns=c("ENSEMBL","SYMBOL","GENENAME","ENTREZID"),
+              keytype="ENSEMBL") %>% 
+  filter(!duplicated(ENSEMBL))
+## Add new annotations to the results table  
+  
+results_annotated <- left_join(results, anno,by="ENSEMBL") %>% 
+  arrange(padj)
+  
+```
+
+```{r}
+## Volcano plot of the top N genes (N can be altered)
+N <- 10
+top_genes <- results_annotated$ENSEMBL[1:N]
+results_annotated %>% 
+  mutate(Label = ifelse(ENSEMBL %in% top_genes, SYMBOL, "")) %>%  
+  ggplot(aes(x = log2FoldChange, y = -log10(padj), label=Label)) + geom_point(alpha=0.4) + geom_text(col="blue")
+```
+
+
+```{r}
+library(pheatmap)
+top_genes <- results_annotated$ENSEMBL[1:10]
+vsd <- vst(dds)
+
+sampleInfo <- as.data.frame(colData(dds)[,c("Status","CellType")])
+
+pheatmap(assay(vsd)[top_genes,],
+         annotation_col = sampleInfo)
+```
+
 
 # 4. Pathways
 
-```{r echo=FALSE,message=FALSE,warning=FALSE}
 
+
+
+
+```{r}
+## use the clusterProfile tool to perform over-representation analysis
+
+library(clusterProfiler)
+universe <- results_annotated %>% pull(ENTREZID)
+sigGenes <- results_annotated %>% 
+  filter(padj < 0.05, !is.na(ENTREZID)) %>% pull(ENTREZID)
+
+enrich_go <- enrichGO(
+  gene= sigGenes,
+  OrgDb = org.Mm.eg.db,
+  keyType = "ENTREZID",
+  ont = "BP",
+  universe = universe,
+  qvalueCutoff = 0.05,
+  readable=TRUE
+)
+
+
+```
+
+```{r}
+enrich_go_tidy <- enrich_go %>% 
+  slot("result") %>% 
+  tibble::as.tibble() 
+```
+
+```{r}
+library(fgsea)
+## An fgsea analysis requires a ranked list of statistics
+gseaInput <- filter(results_annotated, !is.na(ENTREZID), !is.na(stat)) %>% 
+  arrange(stat)
+ranks <- pull(gseaInput,stat)
+names(ranks) <- gseaInput$ENTREZID
+download.file("http://bioinf.wehi.edu.au/MSigDB/v7.1/Mm.h.all.v7.1.entrez.rds", destfile = "Robjects/Mm.h.all.v7.1.entrez.rds")
+Mm.H <- readRDS("Robjects/Mm.h.all.v7.1.entrez.rds")
+pathways <- Mm.H
+```
+
+```{r}
+library(fgsea)
+fgseaRes <- fgsea(pathways, ranks, minSize=15, maxSize = 500)
+dim(fgseaRes)
+```
+
+```{r}
+fgseaResTidy <- fgseaRes %>%
+  as_tibble() %>%
+  arrange(desc(NES))
+
+# Show in a nice table:
+fgseaResTidy 
+```
+
+```{r}
+library(ggplot2)
+ggplot(fgseaResTidy, aes(reorder(pathway, NES), NES)) +
+  geom_col(aes(fill=padj<0.05)) +
+  coord_flip() +
+  labs(x="Pathway", y="Normalized Enrichment Score",
+       title="Hallmark pathways NES from GSEA")
 ```
 
