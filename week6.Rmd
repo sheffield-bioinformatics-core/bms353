@@ -82,7 +82,7 @@ dplyr::count(de_GO, GO) %>%
 
 <div class="exercise">
 - Use the `AnnotationDbi::select` function to find the GO terms for all `ENSEMBL` IDs in the `results_annotated` data frame. How many entries are there for `GO:0016020`?
-- What proportion of genes for this term were found to be differentially-expressed?
+- What proportion of genes for this term were found to be differentially-expressed (also present in `de_genes`)?
 - Is this enough information to decide whether the pathway is altered or not? What information are we not taking into account?
 </div>
 
